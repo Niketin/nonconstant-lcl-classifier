@@ -1,22 +1,18 @@
-use thesis_tool_lib::*;
 use std::env;
+use thesis_tool_lib::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().skip(1).collect();
 
-    // 2 arguments are required. 
-    assert_eq!(args.len(), 2);
-    
-    // First one for active nodes.
-    // Second one for passive nodes.
-    let (a, p) = (&args[0], &args[1]);
+    // 3 arguments are required.
+    assert_eq!(args.len(), 3);
 
-    // Create LclProblem.
-    let problem = LclProblem::new(&a, &p)?;
-    println!("{:?}", problem);
+    let n = &args[0].parse::<usize>()?;
+    let deg_a = &args[1].parse::<usize>()?;
+    let deg_p = &args[2].parse::<usize>()?;
 
     // Generate graphs.
-    let graphs = generate_biregular_graphs(9, 2, 3);
+    let graphs = generate_biregular_graphs(*n, *deg_a, *deg_p);
 
     // Print each graph in dot format.
     graphs.into_iter().for_each(|x| {
