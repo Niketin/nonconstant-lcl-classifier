@@ -15,13 +15,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let graphs = generate_biregular_graphs(*n, *deg_a, *deg_p);
 
     // Print each graph in dot format.
-    graphs.into_iter().for_each(|x| {
+    graphs.into_iter().enumerate().for_each(|(i,x)| {
         println!(
             "{}: {:?}, {}: {:?}",
             x.degree_a, x.partition_a, x.degree_b, x.partition_b
         );
         let dot = &x.graph.get_dot();
         println!("{}", dot);
+
+        let path = format!("./graph_{}.svg", i);
+        save_as_svg(&path, dot).expect(format!("Saving to path {} did not work", path).as_str());
     });
 
     Ok(())
