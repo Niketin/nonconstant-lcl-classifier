@@ -177,28 +177,27 @@ fn is_bipartite(
     Some((red_vec, blue_vec))
 }
 
-/// Check if all nodes at node_indices have the specified degree or 1.
+/// Check if all nodes at node_indices have the specified degree.
 ///
 /// * `graph` - Graph which nodes are checked against the degree criterion.
 /// * `node_indices` - Indices of the nodes which will be checked.
 /// * `degree` - The degree.
-fn are_all_nodes_given_degree_or_1(
+fn all_nodes_with_degree(
     graph: &Graph<u32, (), Undirected, u32>,
     node_indices: &Vec<NodeIndex<u32>>,
     degree: usize,
 ) -> bool {
-    let allowed_degrees = [1, degree];
-    return node_indices
+    node_indices
         .into_iter()
-        .all(|x| allowed_degrees.contains(&graph.neighbors(*x).count()));
+        .all(|x| &graph.neighbors(*x).count() == &degree)
 }
 
 /// Checks if the graph is biregular.
 ///
 /// Graph is biregular if it is bipartite, and
-/// nodes in set A have degree degree_a or 1
+/// nodes in set A have degree degree_a
 /// and
-/// nodes in set B have degree degree_b or 1
+/// nodes in set B have degree degree_b
 ///
 /// Bipartity is assumed and not checked.
 ///
@@ -219,12 +218,12 @@ fn is_biregular<'a>(
     usize,
     usize,
 )> {
-    if are_all_nodes_given_degree_or_1(graph, node_indices_a, degree_a)
-        && are_all_nodes_given_degree_or_1(graph, node_indices_b, degree_b)
+    if all_nodes_with_degree(graph, node_indices_a, degree_a)
+        && all_nodes_with_degree(graph, node_indices_b, degree_b)
     {
         Some((&node_indices_a, &node_indices_b, degree_a, degree_b))
-    } else if are_all_nodes_given_degree_or_1(graph, node_indices_a, degree_b)
-        && are_all_nodes_given_degree_or_1(graph, node_indices_b, degree_a)
+    } else if all_nodes_with_degree(graph, node_indices_a, degree_b)
+        && all_nodes_with_degree(graph, node_indices_b, degree_a)
     {
         Some((&node_indices_a, &node_indices_b, degree_b, degree_a))
     } else {
@@ -238,11 +237,16 @@ mod tests {
 
     #[test]
     fn test_generating_biregular_graphs() {
-        assert_eq!(count_biregular_graphs(9, 2, 3), 5);
-        assert_eq!(count_biregular_graphs(9, 3, 2), 5);
+        assert_eq!(count_biregular_graphs(5, 3, 2), 1);
+        assert_eq!(count_biregular_graphs(5, 2, 3), 1);
 
-        assert_eq!(count_biregular_graphs(7, 2, 3), 3);
-        assert_eq!(count_biregular_graphs(7, 3, 2), 3);
+        assert_eq!(count_biregular_graphs(7, 2, 3), 0);
+        assert_eq!(count_biregular_graphs(7, 3, 2), 0);
+
+        assert_eq!(count_biregular_graphs(8, 5, 3), 1);
+        assert_eq!(count_biregular_graphs(8, 3, 5), 1);
+
+        assert_eq!(count_biregular_graphs(8, 3, 3), 1);
     }
 
     fn count_biregular_graphs(n: usize, a: usize, b: usize) -> usize {
