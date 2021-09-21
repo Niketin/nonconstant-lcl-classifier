@@ -1,12 +1,12 @@
 use std::{collections::HashMap, error::Error};
 
 #[derive(Debug)]
-pub struct Encoding {
+pub struct Configurations {
     pub data: Vec<u8>,
     pub size: (usize, usize),
 }
 
-impl Encoding {
+impl Configurations {
     pub fn from_str(
         encoding: &str,
         symbol_map: &mut HashMap<String, u8>,
@@ -35,7 +35,7 @@ impl Encoding {
 
         let height = encoding.lines().count();
 
-        Ok(Encoding {
+        Ok(Configurations {
             data: v,
             size: (width, height),
         })

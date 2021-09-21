@@ -1,12 +1,12 @@
-mod encoding;
+mod configurations;
 
-use encoding::Encoding;
+use configurations::Configurations;
 use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct LclProblem {
-    pub a: Encoding,
-    pub p: Encoding,
+    pub active: Configurations,
+    pub passive: Configurations,
     pub symbol_map: HashMap<String, u8>,
 }
 
@@ -14,8 +14,8 @@ impl LclProblem {
     pub fn new(a: &str, p: &str) -> Result<LclProblem, Box<dyn std::error::Error>> {
         let mut symbol_map: HashMap<String, u8> = HashMap::new();
         Ok(LclProblem {
-            a: Encoding::from_str(a, &mut symbol_map)?,
-            p: Encoding::from_str(p, &mut symbol_map)?,
+            active: Configurations::from_str(a, &mut symbol_map)?,
+            passive: Configurations::from_str(p, &mut symbol_map)?,
             symbol_map,
         })
     }
