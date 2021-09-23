@@ -1,4 +1,5 @@
 mod lcl_problem;
+mod sat_encoding;
 
 pub use lcl_problem::LclProblem;
 
