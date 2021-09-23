@@ -1,12 +1,26 @@
 use std::{collections::HashMap, error::Error};
 
+use itertools::Itertools;
+
 #[derive(Debug)]
 pub struct Configurations {
-    pub data: Vec<u8>,
-    pub size: (usize, usize),
+    data: Vec<u8>,
+    pub labels_per_configuration: usize,
+    pub configuration_count: usize,
 }
 
 impl Configurations {
+    pub fn get_configuration(&self, index: usize) -> &[u8] {
+        assert!(index < self.configuration_count);
+        let begin = self.labels_per_configuration * index;
+        let end = begin + self.labels_per_configuration;
+        &self.data[begin..end]
+    }
+
+    pub fn get_configurations(&self) -> itertools::IntoChunks<std::slice::Iter<u8>> {
+        self.data.iter().chunks(self.labels_per_configuration)
+    }
+
     pub fn from_str(
         encoding: &str,
         symbol_map: &mut HashMap<String, u8>,
@@ -37,7 +51,8 @@ impl Configurations {
 
         Ok(Configurations {
             data: v,
-            size: (width, height),
+            labels_per_configuration: width,
+            configuration_count: height,
         })
     }
 }

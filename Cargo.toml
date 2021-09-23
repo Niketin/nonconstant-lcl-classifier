@@ -16,3 +16,5 @@ path = "src/main.rs"
 [dependencies]
 petgraph = "0.6.0"
 graph6 = "2.0.1"
+itertools = "0.10.1"
+
