@@ -24,7 +24,7 @@ impl Configurations {
                 let value = if symbol_map.contains_key(symbol) {
                     symbol_map.get(symbol).unwrap().clone()
                 } else {
-                    let new_value = symbol_map.len() as u8 + 1;
+                    let new_value = symbol_map.len() as u8;
                     symbol_map.insert(String::from(symbol), new_value);
                     new_value
                 };
