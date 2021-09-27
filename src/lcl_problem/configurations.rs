@@ -2,6 +2,13 @@ use std::{collections::HashMap, error::Error};
 
 use itertools::Itertools;
 
+/// A container for set of configurations that are used to define an LCL problem.
+///
+/// A configuration is a multiset of labels.
+/// A new Configuration can be created by using method [`Configurations::new`].
+///
+/// Contained configurations can be accessed with different methods.
+/// It is also possible to access all unique permutations of each configuration with [`Configurations::get_permutations`].
 #[derive(Debug, Clone)]
 pub struct Configurations {
     data: Vec<u8>,
@@ -10,6 +17,23 @@ pub struct Configurations {
 }
 
 impl Configurations {
+    /// Creates Configuration instance from given `encoding` using given `symbol_map`.
+    ///
+    /// Encoding is formated as a multirow string where each configuration is separated with linebreak and each label is separated with space.
+    /// Each configuration has to be equally long.
+    ///
+    /// Internally each symbol is mapped to unsigned integers and then saved in vector as `u8`.
+    /// By default, symbols increase starting from 0.
+    /// A symbol_map is supposed to be given if it is desired to have multiple [`Configurations`] instances using same mapping of symbols.
+    ///
+    ///
+    /// # Example
+    /// ```
+    /// use std::collections::HashMap;
+    /// # use thesis_tool_lib::Configurations;
+    /// let mut symbol_map = HashMap::<String, u8>::new();
+    /// let configurations = Configurations::new("A B C\nA A B\nC C C", &mut symbol_map).unwrap();
+    /// ```
     pub fn new(
         encoding: &str,
         symbol_map: &mut HashMap<String, u8>,
@@ -68,6 +92,44 @@ impl Configurations {
         self.data.iter().chunks(self.labels_per_configuration)
     }
 
+    /// Returns all unique permutations of labels, in each configuration.
+    ///
+    /// # Example
+    /// Let Active configurations be
+    /// ```text
+    ///   A A B
+    ///   A B C
+    /// ```
+    /// All permutations of those configurations are:
+    /// ```text
+    ///   A A B
+    ///   A B A
+    ///   B A A
+    ///
+    ///   A B C
+    ///   A C B
+    ///   B A C
+    ///   B C A
+    ///   C A B
+    ///   C B A
+    /// ```
+    ///
+    /// # Example
+    /// ```
+    /// use std::collections::HashMap;
+    /// # use thesis_tool_lib::Configurations;
+    /// let mut symbol_map = HashMap::<String, u8>::new();
+    /// let configurations = Configurations::new("A B C", &mut symbol_map).unwrap();
+    /// let permutations = configurations.get_permutations();
+    /// let correct = vec![
+    ///     vec![0, 1, 2],
+    ///     vec![0, 2, 1],
+    ///     vec![1, 0, 2],
+    ///     vec![1, 2, 0],
+    ///     vec![2, 0, 1],
+    ///     vec![2, 1, 0]];
+    /// assert_eq!(permutations, correct);
+    /// ```
     pub fn get_permutations(&self) -> Vec<Vec<u8>> {
         let configurations_chunks = self.get_configurations_chunks();
         let configurations_vec = configurations_chunks.into_iter().map(|x| x.collect_vec());

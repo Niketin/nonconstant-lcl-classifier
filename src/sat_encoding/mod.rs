@@ -7,6 +7,7 @@ type Clause = Vec<i32>;
 type Clauses = Vec<Clause>;
 type Permutations = Vec<Vec<u8>>;
 
+/// Enumerator for SAT solver's result.
 #[derive(Debug, PartialEq)]
 pub enum SatResult {
     Satisfiable,
@@ -20,6 +21,12 @@ pub struct SatEncoder {
 }
 
 impl SatEncoder {
+    /// Initializes new SatEncoder with an LCL proglem and a biregular graph.
+    ///
+    /// Permutations of labels in every configuration are calculated and saved in
+    /// the fields 'active_permutations' and 'passive_permutations' of the struct.
+    /// Only unique permutations are saved.
+    /// More about permutations in documentation of function [`crate::Configurations::get_permutations`].
     pub fn new(lcl_problem: LclProblem, graph: BiregularGraph) -> SatEncoder {
         let active_permutations: Permutations = lcl_problem.active.get_permutations();
         let passive_permutations: Permutations = lcl_problem.passive.get_permutations();
@@ -32,6 +39,9 @@ impl SatEncoder {
         }
     }
 
+    /// Encodes LCL problem and a bipartite graph into CNF form.
+    ///
+    /// Returns clauses of type `Clauses`.
     pub fn encode(&self) -> Clauses {
         let mut clauses: Clauses = vec![];
 
@@ -44,7 +54,6 @@ impl SatEncoder {
 
         // 1. Adjacent nodes need to agree on the edge's label.
         // In other words, two adjacent nodes cannot label their shared edge differently.
-
         for node in &self.graph.partition_a {
             for neighbour in self.graph.graph.neighbors(*node) {
                 let all_symbol_pairs = symbols.iter().permutations(2);
@@ -167,7 +176,13 @@ impl SatEncoder {
         clauses
     }
 
-    fn _clauses_into_cnf_dimacs(&self, clauses: &Clauses, variable_count: usize) -> String {
+    /// Returns a string containing CNF DIMACS formatted clauses.
+    ///
+    /// # Useful links
+    ///
+    /// - [Specification](http://www.domagoj-babic.com/uploads/ResearchProjects/Spear/dimacs-cnf.pdf)
+    /// - [Some site](https://people.sc.fsu.edu/~jburkardt/data/cnf/cnf.html)
+    pub fn _clauses_into_cnf_dimacs(&self, clauses: &Clauses, variable_count: usize) -> String {
         let mut result = String::new();
         result.push_str(&format!("p cnf{} {}\n", variable_count, clauses.len()));
 
@@ -178,6 +193,14 @@ impl SatEncoder {
         result
     }
 
+    /// Returns a variable representing a permutation of labels in some configuration.
+    ///
+    /// # Parameters
+    /// - `active` tells if the node is active or passive.
+    /// - `node_index` is the index of the node in internal graph [`self.graph.graph`].
+    /// - `permutation_index` is the index of permutation in its Configurations instance.
+    /// - `active_permutations_size` tells the count of permutations in active configurations
+    /// - `passive_permutations_size` tells the count of permutations in passive configurations
     fn var_permutation(
         &self,
         active: bool,
@@ -186,16 +209,6 @@ impl SatEncoder {
         active_permutations_size: usize,
         passive_permutations_size: usize,
     ) -> i32 {
-        /*
-        version 1   version 2
-        v_A_1_1     v_1
-        v_A_1_2     v_2
-        v_A_1_3     v_3
-        v_A_2_1     v_4
-
-        total number of variables: a_nodes * a_permutations + p_nodes * p_permutations
-        */
-
         let active_nodes_size = self.graph.partition_a.len();
         if active {
             let (active_index, _active_nodeindex) = self
@@ -222,6 +235,17 @@ impl SatEncoder {
             + 1) as i32;
     }
 
+    /// Returns a variable representing an assigned label of an edge.
+    ///
+    ///
+    /// # Parameters
+    /// - `first_active` tells if thefirst node is active or passive. The second node is always in the opposite partition of the graph.
+    /// - `node_index_0` is the index of the first node in internal graph [`self.graph.graph`].
+    /// - `node_index_1` is the index of the second node in internal graph [`self.graph.graph`].
+    /// - `permutation_index` is the index of permutation in its Configurations instance.
+    /// - `active_permutations_size` tells the count of permutations in active configurations
+    /// - `passive_permutations_size` tells the count of permutations in passive configurations.
+    /// - `symbol` is the symbol of the label.
     fn var_label(
         &self,
         first_active: bool,
@@ -277,6 +301,9 @@ impl SatEncoder {
         return base + active_passive_label_variables_size + (v as i32);
     }
 
+    /// Solves SAT problem using PicoSAT.
+    ///
+    /// Returns enumerator [`SatResult`] stating the solver's result.
     pub fn solve(&self, clauses: Clauses) -> SatResult {
         let mut psat = picosat::init();
 
@@ -309,6 +336,7 @@ impl SatEncoder {
         let is_positive = variable > 0;
         let variable_abs = variable.abs();
         let sign_str = if is_positive { " " } else { "-" };
+
         // Active node Permutation
         let active_nodes_len: i32 = self.graph.partition_a.len() as i32;
         let active_permutations_len: i32 = self.active_permutations.len() as i32;
