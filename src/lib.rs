@@ -2,6 +2,7 @@ mod lcl_problem;
 mod sat_encoding;
 
 pub use lcl_problem::LclProblem;
+pub use sat_encoding::{SatEncoder, SatResult};
 
 use graph6::string_to_adjacency_matrix;
 use petgraph::{Graph, Undirected, dot::{Config, Dot}, graph::NodeIndex, visit::VisitMap};

@@ -1,11 +1,17 @@
 use crate::lcl_problem::LclProblem;
 use crate::BiregularGraph;
 use itertools::Itertools;
+use picorust::picosat;
 
 type Clause = Vec<i32>;
 type Clauses = Vec<Clause>;
 type Permutations = Vec<Vec<u8>>;
 
+#[derive(Debug, PartialEq)]
+pub enum SatResult {
+    Satisfiable,
+    Unsatisfiable,
+}
 pub struct SatEncoder {
     lcl_problem: LclProblem,
     graph: BiregularGraph,
@@ -295,6 +301,27 @@ impl SatEncoder {
         let active_passive_label_variables_size =
             (active_nodes_size * passive_nodes_size * symbols_size) as i32;
         return base + active_passive_label_variables_size + (v as i32);
+    }
+
+    pub fn solve(&self, clauses: Clauses) -> SatResult {
+        let mut psat = picosat::init();
+
+        for c in clauses.iter() {
+            for var in c.iter() {
+                picosat::add(&mut psat, *var);
+            }
+            picosat::add(&mut psat, 0);
+        }
+
+        let result = picosat::sat(&mut psat, -1);
+
+        picosat::reset(&mut psat);
+
+        return match result {
+            10 => SatResult::Satisfiable,
+            20 => SatResult::Unsatisfiable,
+            _ => unimplemented!("Unknown result"),
+        };
     }
 }
 
