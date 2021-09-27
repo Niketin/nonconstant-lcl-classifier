@@ -2,68 +2,62 @@ use crate::lcl_problem::LclProblem;
 use crate::BiregularGraph;
 use itertools::Itertools;
 
-struct _Counts {
-    active_nodes: usize,
-    passive_nodes: usize,
-    active_configurations: usize,
-    passive_configurations: usize,
-    active_configurations_permutations: Vec<usize>,
-    passive_configuration_permutations: Vec<usize>,
-}
+type Clause = Vec<i32>;
+type Clauses = Vec<Clause>;
+type Permutations = Vec<Vec<u8>>;
+
 pub struct SatEncoder {
     lcl_problem: LclProblem,
     graph: BiregularGraph,
+    active_permutations: Permutations,
+    passive_permutations: Permutations,
 }
 
 impl SatEncoder {
-    pub fn new(lcl_problem: LclProblem, graph: BiregularGraph) -> Self {
-        SatEncoder { lcl_problem, graph }
+    pub fn new(lcl_problem: LclProblem, graph: BiregularGraph) -> SatEncoder {
+        let active_configurations_iter = &lcl_problem
+            .active
+            .get_configurations();
+        let active_configurations = active_configurations_iter
+            .into_iter()
+            .map(|x| x.collect_vec());
+
+        let passive_configurations_iter = &lcl_problem
+            .passive
+            .get_configurations();
+        let passive_configurations = passive_configurations_iter
+            .into_iter()
+            .map(|x| x.collect_vec());
+
+        let active_permutations = active_configurations
+            .map(|x| {
+                let k = x.len();
+                x.iter().map(|x| **x).permutations(k).unique().collect_vec()
+            })
+            .flatten()
+            .collect_vec();
+
+        let passive_permutations = passive_configurations
+            .map(|x| {
+                let k = x.len();
+                x.iter().map(|x| **x).permutations(k).unique().collect_vec()
+            })
+            .flatten()
+            .collect_vec();
+
+        SatEncoder {
+            lcl_problem,
+            graph,
+            active_permutations,
+            passive_permutations,
+        }
     }
 
-    pub fn encode(&self) -> String {
-        let mut clauses: Vec<Vec<i32>> = vec![];
-        let var_count: usize = 0;
+    pub fn encode(&self) -> Clauses {
+        let mut clauses: Clauses = vec![];
 
-        let active_configurations = self
-            .lcl_problem
-            .active
-            .get_configurations()
-            .into_iter()
-            .map(|x| x.collect_vec())
-            .collect_vec();
-        let passive_configurations = self
-            .lcl_problem
-            .passive
-            .get_configurations()
-            .into_iter()
-            .map(|x| x.collect_vec())
-            .collect_vec();
-
-        let active_config_permutations = active_configurations
-            .iter()
-            .map(|x| {
-                let k = x.len();
-                x.iter().permutations(k).unique().collect_vec()
-            })
-            .flatten()
-            .collect_vec();
-
-        let passive_config_permutations = passive_configurations
-            .iter()
-            .map(|x| {
-                let k = x.len();
-                x.iter().permutations(k).unique().collect_vec()
-            })
-            .flatten()
-            .collect_vec();
-
-        let _active_configurations_len = active_configurations.len();
-        let _passive_configurations_len = passive_configurations.len();
-
-        let _symbol_count = self.lcl_problem.symbol_map.len();
-
-        let active_permutations_len: usize = active_config_permutations.len();
-        let passive_permutations_len: usize = passive_config_permutations.len();
+        let active_permutations_len: usize = self.active_permutations.len();
+        let passive_permutations_len: usize = self.passive_permutations.len();
 
         let symbols = self.lcl_problem.symbol_map.values().collect_vec();
 
@@ -102,16 +96,18 @@ impl SatEncoder {
 
         // 2.1 Each active node has only one permutation
         for active_node in &self.graph.partition_a {
-            let vars = (0..active_permutations_len).map(|permutation_index| {
-                self.var_permutation(
-                    true,
-                    active_node.index(),
-                    permutation_index,
-                    active_permutations_len,
-                    passive_permutations_len,
-                )
-            });
-            clauses.extend(only_one(&vars.collect_vec()));
+            let vars = (0..active_permutations_len)
+                .map(|permutation_index| {
+                    self.var_permutation(
+                        true,
+                        active_node.index(),
+                        permutation_index,
+                        active_permutations_len,
+                        passive_permutations_len,
+                    )
+                })
+                .collect_vec();
+            clauses.extend(only_one(&vars));
         }
 
         // 2.2 Each passive node has only one permutation
@@ -133,7 +129,7 @@ impl SatEncoder {
 
         // 2.3.1 Active nodes
         for active_node in &self.graph.partition_a {
-            for (permutation_index, permutation) in active_config_permutations.iter().enumerate() {
+            for (permutation_index, permutation) in self.active_permutations.iter().enumerate() {
                 let var_permutation = self.var_permutation(
                     true,
                     active_node.index(),
@@ -151,7 +147,7 @@ impl SatEncoder {
                         neighbour.index(),
                         active_permutations_len,
                         passive_permutations_len,
-                        **permutation[neighbour_index] as usize,
+                        permutation[neighbour_index] as usize,
                     );
 
                     clauses.extend(implies(var_permutation, var_label));
@@ -161,7 +157,7 @@ impl SatEncoder {
 
         // 2.3.2 Passive nodes
         for passive_node in &self.graph.partition_b {
-            for (permutation_index, permutation) in passive_config_permutations.iter().enumerate() {
+            for (permutation_index, permutation) in self.passive_permutations.iter().enumerate() {
                 let var_permutation = self.var_permutation(
                     false,
                     passive_node.index(),
@@ -179,7 +175,7 @@ impl SatEncoder {
                         neighbour.index(),
                         active_permutations_len,
                         passive_permutations_len,
-                        **permutation[neighbour_index] as usize,
+                        permutation[neighbour_index] as usize,
                     );
 
                     clauses.extend(implies(var_permutation, var_label));
@@ -189,10 +185,10 @@ impl SatEncoder {
 
         // End adding clauses
 
-        self.clauses_into_cnf_dimacs(&clauses, var_count)
+        clauses
     }
 
-    fn clauses_into_cnf_dimacs(&self, clauses: &Vec<Vec<i32>>, variable_count: usize) -> String {
+    fn _clauses_into_cnf_dimacs(&self, clauses: &Clauses, variable_count: usize) -> String {
         let mut result = String::new();
         result.push_str(&format!("p cnf{} {}\n", variable_count, clauses.len()));
 
@@ -220,15 +216,15 @@ impl SatEncoder {
 
         total number of variables: a_nodes * a_permutations + p_nodes * p_permutations
         */
-        let (active_index, _active_nodeindex) = self
-            .graph
-            .partition_a
-            .iter()
-            .find_position(|x| x.index() == node_index)
-            .expect("Something went wrong :(");
 
         let active_nodes_size = self.graph.partition_a.len();
         if active {
+            let (active_index, _active_nodeindex) = self
+                .graph
+                .partition_a
+                .iter()
+                .find_position(|x| x.index() == node_index)
+                .expect("Something went wrong :(");
             return (active_index * active_permutations_size + permutation_index) as i32;
         }
 
@@ -243,7 +239,8 @@ impl SatEncoder {
 
         return (active_nodes_size * active_permutations_size
             + passive_index * passive_permutations_size
-            + permutation_index) as i32;
+            + permutation_index
+            + 1) as i32;
     }
 
     fn var_label(
@@ -301,23 +298,19 @@ impl SatEncoder {
     }
 }
 
-fn at_least_one(variables: &[i32]) -> Vec<Vec<i32>> {
+fn at_least_one(variables: &[i32]) -> Clauses {
     vec![variables.into_iter().copied().collect_vec()]
 }
 
-fn at_most_one(variables: &[i32]) -> Vec<Vec<i32>> {
+fn at_most_one(variables: &[i32]) -> Clauses {
     variables.iter().map(|x| -x).combinations(2).collect_vec()
 }
 
-fn only_one(variables: &[i32]) -> Vec<Vec<i32>> {
-    [
-        at_least_one(variables),
-        at_most_one(variables),
-    ]
-    .concat()
+fn only_one(variables: &[i32]) -> Clauses {
+    [at_least_one(variables), at_most_one(variables)].concat()
 }
 
-fn implies(variable_0: i32, variable_1: i32) -> Vec<Vec<i32>> {
+fn implies(variable_0: i32, variable_1: i32) -> Clauses {
     vec![vec![-variable_0, variable_1]]
 }
 
@@ -350,10 +343,6 @@ mod tests {
 
     #[test]
     fn test_implies() {
-        let left = implies(1, 2);
-        let right = vec![
-            vec![-1, 2],
-        ];
-        assert_eq!(left, right);
+        assert_eq!(implies(1, 2), vec![vec![-1, 2]]);
     }
 }
