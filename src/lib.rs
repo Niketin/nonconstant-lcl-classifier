@@ -226,7 +226,7 @@ fn is_biregular<'a>(
     } else if all_nodes_with_degree(graph, node_indices_a, degree_b)
         && all_nodes_with_degree(graph, node_indices_b, degree_a)
     {
-        Some((&node_indices_a, &node_indices_b, degree_b, degree_a))
+        Some((&node_indices_b, &node_indices_a, degree_a, degree_b))
     } else {
         None
     }
@@ -252,5 +252,22 @@ mod tests {
 
     fn count_biregular_graphs(n: usize, a: usize, b: usize) -> usize {
         generate_biregular_graphs(n, a, b).len()
+    }
+
+    #[test]
+    fn test_biregular_graph_partitions_have_correct_degrees() {
+        let graphs = generate_biregular_graphs(5, 3, 2);
+
+        for graph in graphs {
+            assert_eq!(graph.degree_a, 3);
+            assert_eq!(graph.degree_b, 2);
+            for node in graph.partition_a {
+                assert_eq!(graph.graph.neighbors(node).count(), 3)
+            }
+
+            for node in graph.partition_b {
+                assert_eq!(graph.graph.neighbors(node).count(), 2)
+            }
+        }
     }
 }
