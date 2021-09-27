@@ -29,3 +29,54 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_lcl_on_n4_graphs_unsatisfiable() -> Result<(), Box<dyn std::error::Error>> {
+        let n = 4;
+        let a = "S S";
+        let p = "K K";
+        let lcl_problem = LclProblem::new(a, p)?;
+        let deg_a = lcl_problem.active.labels_per_configuration;
+        let deg_p = lcl_problem.passive.labels_per_configuration;
+
+        let graphs = generate_biregular_graphs(n, deg_a, deg_p);
+
+        assert!(!graphs.is_empty());
+
+        graphs.into_iter().enumerate().for_each(|(i, graph)| {
+            let sat_encoder = SatEncoder::new(lcl_problem.clone(), graph);
+            let clauses = sat_encoder.encode();
+            let result = sat_encoder.solve(clauses);
+            assert_eq!(result, SatResult::Unsatisfiable);
+        });
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_lcl_on_n4_graphs_satisfiable() -> Result<(), Box<dyn std::error::Error>> {
+        let n = 5;
+
+        let a = "M U U\nP P P";
+        let p = "M M\nP U\nU U";
+        let lcl_problem = LclProblem::new(a, p)?;
+        let deg_a = lcl_problem.active.labels_per_configuration;
+        let deg_p = lcl_problem.passive.labels_per_configuration;
+
+        let graphs = generate_biregular_graphs(n, deg_a, deg_p);
+
+        assert!(!graphs.is_empty());
+        graphs.into_iter().enumerate().for_each(|(i, graph)| {
+            let sat_encoder = SatEncoder::new(lcl_problem.clone(), graph);
+            let clauses = sat_encoder.encode();
+            let result = sat_encoder.solve(clauses);
+            assert_eq!(result, SatResult::Satisfiable);
+        });
+
+        Ok(())
+    }
+}
