@@ -5,10 +5,14 @@ pub use lcl_problem::LclProblem;
 pub use sat_encoding::{SatEncoder, SatResult};
 
 use graph6::string_to_adjacency_matrix;
-use petgraph::{Graph, Undirected, dot::{Config, Dot}, graph::NodeIndex, visit::VisitMap};
-use std::{fmt::Debug, io::prelude::*};
+use petgraph::{
+    dot::{Config, Dot},
+    graph::NodeIndex,
+    visit::VisitMap,
+    Graph, Undirected,
+};
 use std::{collections::HashSet, fs::File, process::Command, process::Stdio};
-
+use std::{fmt::Debug, io::prelude::*};
 
 /// Writes dot graph into svg file.
 pub fn save_as_svg(path: &str, dot: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -46,14 +50,12 @@ pub struct BiregularGraph {
     pub degree_b: usize,
 }
 
-
 /// Generates simple nonisomorphic biregular graphs.
 pub fn generate_biregular_graphs(
     graph_size: usize,
     degree_a: usize,
     degree_b: usize,
 ) -> Vec<BiregularGraph> {
-
     // Use geng and assume it exists in the system.
     let mut command = Command::new("geng");
 
@@ -100,10 +102,10 @@ pub trait DotFormat {
     fn get_dot(&self) -> String;
 }
 
-impl <N, E> DotFormat for Graph<N, E, Undirected> 
+impl<N, E> DotFormat for Graph<N, E, Undirected>
 where
-E: Debug,
-N: Debug,
+    E: Debug,
+    N: Debug,
 {
     fn get_dot(&self) -> String {
         format!(
@@ -112,7 +114,6 @@ N: Debug,
         )
     }
 }
-
 
 /// Transforms adjacency matrix into list of edges.
 fn adjacency_matrix_to_edge_list((adjacency_matrix, size): (Vec<f32>, usize)) -> Vec<(u32, u32)> {

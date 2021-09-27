@@ -21,16 +21,12 @@ pub struct SatEncoder {
 
 impl SatEncoder {
     pub fn new(lcl_problem: LclProblem, graph: BiregularGraph) -> SatEncoder {
-        let active_configurations_iter = &lcl_problem
-            .active
-            .get_configurations();
+        let active_configurations_iter = &lcl_problem.active.get_configurations();
         let active_configurations = active_configurations_iter
             .into_iter()
             .map(|x| x.collect_vec());
 
-        let passive_configurations_iter = &lcl_problem
-            .passive
-            .get_configurations();
+        let passive_configurations_iter = &lcl_problem.passive.get_configurations();
         let passive_configurations = passive_configurations_iter
             .into_iter()
             .map(|x| x.collect_vec());
@@ -335,7 +331,7 @@ impl SatEncoder {
     fn var_to_string(&self, variable: i32) -> String {
         let is_positive = variable > 0;
         let variable_abs = variable.abs();
-        let sign_str = if is_positive {" "} else {"-"};
+        let sign_str = if is_positive { " " } else { "-" };
         // Active node Permutation
         let active_nodes_len: i32 = self.graph.partition_a.len() as i32;
         let active_permutations_len: i32 = self.active_permutations.len() as i32;
@@ -372,7 +368,10 @@ impl SatEncoder {
             let temp = (variable_abs - base) % (passive_nodes_len * symbols_size);
             let passive_index = temp / symbols_size;
             let symbol = temp % symbols_size;
-            return format!("{}A{}_P{}_{}", sign_str, active_index, passive_index, symbol);
+            return format!(
+                "{}A{}_P{}_{}",
+                sign_str, active_index, passive_index, symbol
+            );
         }
 
         // Variables for labels of passive nodes
@@ -385,14 +384,19 @@ impl SatEncoder {
             let temp = (variable_abs - base) % (active_nodes_len * symbols_size);
             let active_index = temp / symbols_size;
             let symbol = temp % symbols_size;
-            return format!("{}P{}_A{}_{}", sign_str, passive_index, active_index, symbol);
+            return format!(
+                "{}P{}_A{}_{}",
+                sign_str, passive_index, active_index, symbol
+            );
         }
 
         unreachable!();
     }
 
     pub fn print_clauses(&self, clauses: Clauses) {
-        clauses.iter().for_each(|ref clause| println!("{} &&", self.clause_to_string(clause)));
+        clauses
+            .iter()
+            .for_each(|ref clause| println!("{} &&", self.clause_to_string(clause)));
     }
 }
 
