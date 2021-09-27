@@ -5,8 +5,8 @@ use itertools::Itertools;
 #[derive(Debug, Clone)]
 pub struct Configurations {
     data: Vec<u8>,
-    pub labels_per_configuration: usize,
-    pub configuration_count: usize,
+    labels_per_configuration: usize,
+    configuration_count: usize,
 }
 
 impl Configurations {
@@ -55,4 +55,15 @@ impl Configurations {
             configuration_count: height,
         })
     }
+
+    /// Returns the count of labels in a configuration.
+    pub fn get_labels_per_configuration(&self) -> usize {
+        self.labels_per_configuration
+    }
+
+    /// Returns the count of labels in a configuration.
+    pub fn get_configuration_count(&self) -> usize {
+        self.configuration_count
+    }
+
 }

@@ -40,8 +40,8 @@ mod tests {
         let a = "S S";
         let p = "K K";
         let lcl_problem = LclProblem::new(a, p)?;
-        let deg_a = lcl_problem.active.labels_per_configuration;
-        let deg_p = lcl_problem.passive.labels_per_configuration;
+        let deg_a = lcl_problem.active.get_labels_per_configuration();
+        let deg_p = lcl_problem.passive.get_labels_per_configuration();
 
         let graphs = generate_biregular_graphs(n, deg_a, deg_p);
 
@@ -64,8 +64,8 @@ mod tests {
         let a = "M U U\nP P P";
         let p = "M M\nP U\nU U";
         let lcl_problem = LclProblem::new(a, p)?;
-        let deg_a = lcl_problem.active.labels_per_configuration;
-        let deg_p = lcl_problem.passive.labels_per_configuration;
+        let deg_a = lcl_problem.active.get_labels_per_configuration();
+        let deg_p = lcl_problem.passive.get_labels_per_configuration();
 
         let graphs = generate_biregular_graphs(n, deg_a, deg_p);
 
