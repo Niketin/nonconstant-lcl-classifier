@@ -21,31 +21,8 @@ pub struct SatEncoder {
 
 impl SatEncoder {
     pub fn new(lcl_problem: LclProblem, graph: BiregularGraph) -> SatEncoder {
-        let active_configurations_iter = &lcl_problem.active.get_configurations();
-        let active_configurations = active_configurations_iter
-            .into_iter()
-            .map(|x| x.collect_vec());
-
-        let passive_configurations_iter = &lcl_problem.passive.get_configurations();
-        let passive_configurations = passive_configurations_iter
-            .into_iter()
-            .map(|x| x.collect_vec());
-
-        let active_permutations = active_configurations
-            .map(|x| {
-                let k = x.len();
-                x.iter().map(|x| **x).permutations(k).unique().collect_vec()
-            })
-            .flatten()
-            .collect_vec();
-
-        let passive_permutations = passive_configurations
-            .map(|x| {
-                let k = x.len();
-                x.iter().map(|x| **x).permutations(k).unique().collect_vec()
-            })
-            .flatten()
-            .collect_vec();
+        let active_permutations: Permutations = lcl_problem.active.get_permutations();
+        let passive_permutations: Permutations = lcl_problem.passive.get_permutations();
 
         SatEncoder {
             lcl_problem,
