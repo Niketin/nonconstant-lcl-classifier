@@ -47,7 +47,7 @@ mod tests {
 
         assert!(!graphs.is_empty());
 
-        graphs.into_iter().enumerate().for_each(|(i, graph)| {
+        graphs.into_iter().for_each(|graph| {
             let sat_encoder = SatEncoder::new(lcl_problem.clone(), graph);
             let clauses = sat_encoder.encode();
             let result = sat_encoder.solve(clauses);
@@ -70,7 +70,7 @@ mod tests {
         let graphs = generate_biregular_graphs(n, deg_a, deg_p);
 
         assert!(!graphs.is_empty());
-        graphs.into_iter().enumerate().for_each(|(i, graph)| {
+        graphs.into_iter().for_each(|graph| {
             let sat_encoder = SatEncoder::new(lcl_problem.clone(), graph);
             let clauses = sat_encoder.encode();
             let result = sat_encoder.solve(clauses);
