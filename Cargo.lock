@@ -19,6 +19,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "398ea4fabe40b9b0d885340a2a991a44c8a645624075ad966d21f88688e2b69e"
 
 [[package]]
+name = "gcc"
+version = "0.3.55"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f5f3913fa0bfe7ee1fd8248b6b9f42a5af4b9d65ec2dd2c3c26132b950ecfc2"
+
+[[package]]
 name = "graph6"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -50,6 +56,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "libc"
+version = "0.2.102"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2a5ac8f984bfcf3a823267e5fde638acc3325f6496633a5da6bb6eb2171e103"
+
+[[package]]
 name = "petgraph"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -60,10 +72,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "picorust"
+version = "0.1.1"
+source = "git+https://github.com/lambdaxymox/picorust#2c87e42fa2bb8f1aa2cb8d5cc01ec7532cbd368e"
+dependencies = [
+ "gcc",
+ "libc",
+]
+
+[[package]]
 name = "thesis-tool"
 version = "0.1.0"
 dependencies = [
  "graph6",
  "itertools",
  "petgraph",
+ "picorust",
 ]
