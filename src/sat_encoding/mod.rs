@@ -323,6 +323,76 @@ impl SatEncoder {
             _ => unimplemented!("Unknown result"),
         };
     }
+
+    fn clause_to_string(&self, clause: &Clause) -> String {
+        format!(
+            "({})",
+            clause.iter().map(|x| self.var_to_string(*x)).join(" || ")
+        )
+    }
+
+    fn var_to_string(&self, variable: i32) -> String {
+        let is_positive = variable > 0;
+        let variable_abs = variable.abs();
+        let sign_str = if is_positive {" "} else {"-"};
+        // Active node Permutation
+        let active_nodes_len: i32 = self.graph.partition_a.len() as i32;
+        let active_permutations_len: i32 = self.active_permutations.len() as i32;
+        let active_permutation_variables_len = active_nodes_len * active_permutations_len;
+        let range_active_node_permutation = 1..active_permutation_variables_len + 1;
+
+        if range_active_node_permutation.contains(&variable_abs) {
+            let active_index = (variable_abs - 1) / active_permutations_len;
+            let permutation_index = (variable_abs - 1) % active_permutations_len;
+            return format!("{}A{}_{}", sign_str, active_index, permutation_index);
+        }
+
+        // Passive node Permutation
+        let passive_nodes_len: i32 = self.graph.partition_b.len() as i32;
+        let passive_permutations_len: i32 = self.passive_permutations.len() as i32;
+        let passive_permutation_variables_len = passive_nodes_len * passive_permutations_len;
+        let base = active_permutation_variables_len + 1;
+        let range_passive_node_permutation = base..base + passive_permutation_variables_len;
+
+        if range_passive_node_permutation.contains(&variable_abs) {
+            let passive_index = (variable_abs - base) / passive_permutations_len;
+            let permutation_index = (variable_abs - base) % passive_permutations_len;
+            return format!("{}P{}_{}", sign_str, passive_index, permutation_index);
+        }
+
+        // Variables for labels of active nodes
+        let base = base + passive_permutation_variables_len;
+        let symbols_size = self.lcl_problem.symbol_map.len() as i32;
+
+        let active_node_labels = active_nodes_len * passive_nodes_len * symbols_size;
+        let range_active_node_labels = base..base + active_node_labels;
+        if range_active_node_labels.contains(&variable_abs) {
+            let active_index = (variable_abs - base) / (passive_nodes_len * symbols_size);
+            let temp = (variable_abs - base) % (passive_nodes_len * symbols_size);
+            let passive_index = temp / symbols_size;
+            let symbol = temp % symbols_size;
+            return format!("{}A{}_P{}_{}", sign_str, active_index, passive_index, symbol);
+        }
+
+        // Variables for labels of passive nodes
+        let base = base + active_nodes_len * passive_nodes_len * symbols_size;
+        let passive_node_labels = active_nodes_len * passive_nodes_len * symbols_size;
+        let range_passive_node_labels = base..base + passive_node_labels;
+
+        if range_passive_node_labels.contains(&variable_abs) {
+            let passive_index = (variable_abs - base) / (active_nodes_len * symbols_size);
+            let temp = (variable_abs - base) % (active_nodes_len * symbols_size);
+            let active_index = temp / symbols_size;
+            let symbol = temp % symbols_size;
+            return format!("{}P{}_A{}_{}", sign_str, passive_index, active_index, symbol);
+        }
+
+        unreachable!();
+    }
+
+    pub fn print_clauses(&self, clauses: Clauses) {
+        clauses.iter().for_each(|ref clause| println!("{} &&", self.clause_to_string(clause)));
+    }
 }
 
 fn at_least_one(variables: &[i32]) -> Clauses {
