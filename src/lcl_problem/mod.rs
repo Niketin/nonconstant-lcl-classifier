@@ -14,8 +14,8 @@ impl LclProblem {
     pub fn new(a: &str, p: &str) -> Result<LclProblem, Box<dyn std::error::Error>> {
         let mut symbol_map: HashMap<String, u8> = HashMap::new();
         Ok(LclProblem {
-            active: Configurations::from_str(a, &mut symbol_map)?,
-            passive: Configurations::from_str(p, &mut symbol_map)?,
+            active: Configurations::new(a, &mut symbol_map)?,
+            passive: Configurations::new(p, &mut symbol_map)?,
             symbol_map,
         })
     }
