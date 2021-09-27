@@ -2,6 +2,7 @@ mod lcl_problem;
 mod sat_encoding;
 
 pub use lcl_problem::LclProblem;
+pub use lcl_problem::configurations::Configurations;
 pub use sat_encoding::{SatEncoder, SatResult};
 
 use graph6::string_to_adjacency_matrix;

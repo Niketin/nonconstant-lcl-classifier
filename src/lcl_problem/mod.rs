@@ -1,4 +1,4 @@
-mod configurations;
+pub mod configurations;
 
 use configurations::Configurations;
 use std::collections::HashMap;
