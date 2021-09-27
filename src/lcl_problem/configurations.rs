@@ -10,7 +10,7 @@ pub struct Configurations {
 }
 
 impl Configurations {
-    pub fn from_str(
+    pub fn new(
         encoding: &str,
         symbol_map: &mut HashMap<String, u8>,
     ) -> Result<Self, Box<dyn Error>> {
