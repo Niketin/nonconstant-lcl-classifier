@@ -63,16 +63,12 @@ impl SatEncoder {
                         true,
                         node.index(),
                         neighbour.index(),
-                        active_permutations_len,
-                        passive_permutations_len,
                         **symbol_pair[0] as usize,
                     );
                     let var_neighbour = self.var_label(
                         false,
                         neighbour.index(),
                         node.index(),
-                        active_permutations_len,
-                        passive_permutations_len,
                         **symbol_pair[1] as usize,
                     );
                     clauses.extend(at_most_one(&[var_node, var_neighbour]));
@@ -86,13 +82,7 @@ impl SatEncoder {
         for active_node in &self.graph.partition_a {
             let vars = (0..active_permutations_len)
                 .map(|permutation_index| {
-                    self.var_permutation(
-                        true,
-                        active_node.index(),
-                        permutation_index,
-                        active_permutations_len,
-                        passive_permutations_len,
-                    )
+                    self.var_permutation(true, active_node.index(), permutation_index)
                 })
                 .collect_vec();
             clauses.extend(only_one(&vars));
@@ -101,13 +91,7 @@ impl SatEncoder {
         // 2.2 Each passive node has only one permutation
         for passive_node in &self.graph.partition_b {
             let vars = (0..passive_permutations_len).map(|permutation_index| {
-                self.var_permutation(
-                    false,
-                    passive_node.index(),
-                    permutation_index,
-                    active_permutations_len,
-                    passive_permutations_len,
-                )
+                self.var_permutation(false, passive_node.index(), permutation_index)
             });
             clauses.extend(only_one(&vars.collect_vec()));
         }
@@ -118,13 +102,8 @@ impl SatEncoder {
         // 2.3.1 Active nodes
         for active_node in &self.graph.partition_a {
             for (permutation_index, permutation) in self.active_permutations.iter().enumerate() {
-                let var_permutation = self.var_permutation(
-                    true,
-                    active_node.index(),
-                    permutation_index,
-                    active_permutations_len,
-                    passive_permutations_len,
-                );
+                let var_permutation =
+                    self.var_permutation(true, active_node.index(), permutation_index);
 
                 for (neighbour_index, neighbour) in
                     self.graph.graph.neighbors(*active_node).enumerate()
@@ -133,8 +112,6 @@ impl SatEncoder {
                         true,
                         active_node.index(),
                         neighbour.index(),
-                        active_permutations_len,
-                        passive_permutations_len,
                         permutation[neighbour_index] as usize,
                     );
 
@@ -146,13 +123,8 @@ impl SatEncoder {
         // 2.3.2 Passive nodes
         for passive_node in &self.graph.partition_b {
             for (permutation_index, permutation) in self.passive_permutations.iter().enumerate() {
-                let var_permutation = self.var_permutation(
-                    false,
-                    passive_node.index(),
-                    permutation_index,
-                    active_permutations_len,
-                    passive_permutations_len,
-                );
+                let var_permutation =
+                    self.var_permutation(false, passive_node.index(), permutation_index);
 
                 for (neighbour_index, neighbour) in
                     self.graph.graph.neighbors(*passive_node).enumerate()
@@ -161,8 +133,6 @@ impl SatEncoder {
                         false,
                         passive_node.index(),
                         neighbour.index(),
-                        active_permutations_len,
-                        passive_permutations_len,
                         permutation[neighbour_index] as usize,
                     );
 
@@ -199,16 +169,9 @@ impl SatEncoder {
     /// - `active` tells if the node is active or passive.
     /// - `node_index` is the index of the node in internal graph [`self.graph.graph`].
     /// - `permutation_index` is the index of permutation in its Configurations instance.
-    /// - `active_permutations_size` tells the count of permutations in active configurations
-    /// - `passive_permutations_size` tells the count of permutations in passive configurations
-    fn var_permutation(
-        &self,
-        active: bool,
-        node_index: usize,
-        permutation_index: usize,
-        active_permutations_size: usize,
-        passive_permutations_size: usize,
-    ) -> i32 {
+    fn var_permutation(&self, active: bool, node_index: usize, permutation_index: usize) -> i32 {
+        let active_permutations_size = self.active_permutations.len();
+        let passive_permutations_size = self.passive_permutations.len();
         let active_nodes_size = self.graph.partition_a.len();
         if active {
             let (active_index, _active_nodeindex) = self
@@ -243,18 +206,16 @@ impl SatEncoder {
     /// - `node_index_0` is the index of the first node in internal graph [`self.graph.graph`].
     /// - `node_index_1` is the index of the second node in internal graph [`self.graph.graph`].
     /// - `permutation_index` is the index of permutation in its Configurations instance.
-    /// - `active_permutations_size` tells the count of permutations in active configurations
-    /// - `passive_permutations_size` tells the count of permutations in passive configurations.
     /// - `symbol` is the symbol of the label.
     fn var_label(
         &self,
         first_active: bool,
         node_index_0: usize,
         node_index_1: usize,
-        active_permutations_size: usize,
-        passive_permutations_size: usize,
         symbol: usize,
     ) -> i32 {
+        let active_permutations_size = self.active_permutations.len();
+        let passive_permutations_size = self.passive_permutations.len();
         let active_nodes_size = self.graph.partition_a.len();
         let passive_nodes_size = self.graph.partition_b.len();
 
