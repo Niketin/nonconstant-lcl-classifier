@@ -2,7 +2,7 @@ use std::{collections::HashMap, error::Error};
 
 use itertools::Itertools;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Configurations {
     data: Vec<u8>,
     pub labels_per_configuration: usize,

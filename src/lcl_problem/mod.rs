@@ -3,7 +3,7 @@ mod configurations;
 use configurations::Configurations;
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LclProblem {
     pub active: Configurations,
     pub passive: Configurations,
