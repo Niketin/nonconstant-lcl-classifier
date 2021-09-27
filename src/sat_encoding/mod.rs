@@ -86,14 +86,14 @@ impl SatEncoder {
                         **symbol_pair[0] as usize,
                     );
                     let var_neighbour = self.var_label(
-                        true,
-                        node.index(),
+                        false,
                         neighbour.index(),
+                        node.index(),
                         active_permutations_len,
                         passive_permutations_len,
                         **symbol_pair[1] as usize,
                     );
-                    clauses.extend(only_one(&[var_node, var_neighbour]));
+                    clauses.extend(at_most_one(&[var_node, var_neighbour]));
                 }
             }
         }
@@ -117,10 +117,10 @@ impl SatEncoder {
         }
 
         // 2.2 Each passive node has only one permutation
-        for passive_node in &self.graph.partition_a {
+        for passive_node in &self.graph.partition_b {
             let vars = (0..passive_permutations_len).map(|permutation_index| {
                 self.var_permutation(
-                    true,
+                    false,
                     passive_node.index(),
                     permutation_index,
                     active_permutations_len,
@@ -231,7 +231,7 @@ impl SatEncoder {
                 .iter()
                 .find_position(|x| x.index() == node_index)
                 .expect("Something went wrong :(");
-            return (active_index * active_permutations_size + permutation_index) as i32;
+            return (active_index * active_permutations_size + permutation_index + 1) as i32;
         }
 
         let (passive_index, _passive_nodeindex) = self
@@ -261,9 +261,10 @@ impl SatEncoder {
         let active_nodes_size = self.graph.partition_a.len();
         let passive_nodes_size = self.graph.partition_b.len();
 
-        // Variables in range 0..base are reserved for permutations.
+        // Variables in range 1..(base + 1) are reserved for permutations.
         let base = (active_nodes_size * active_permutations_size
-            + passive_nodes_size * passive_permutations_size) as i32;
+            + passive_nodes_size * passive_permutations_size
+            + 1) as i32;
 
         let symbols_size = self.lcl_problem.symbol_map.len();
 
