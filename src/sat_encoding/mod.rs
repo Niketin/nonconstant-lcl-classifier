@@ -20,7 +20,7 @@ pub struct SatEncoder {
 }
 
 impl SatEncoder {
-    /// Initializes new SatEncoder with an LCL proglem and a biregular graph.
+    /// Initializes new SatEncoder with an LCL problem and a biregular graph.
     ///
     /// Permutations of labels in every configuration are calculated and saved in
     /// the fields 'active_permutations' and 'passive_permutations' of the struct.
