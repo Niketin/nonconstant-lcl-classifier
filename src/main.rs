@@ -1,30 +1,73 @@
-use std::env;
+use clap::{value_t_or_exit, App, Arg};
+use itertools::Itertools;
+use std::io;
+use std::io::stdout;
+use std::io::Write;
 use thesis_tool_lib::*;
 
+macro_rules! print_flush {
+    ( $($t:tt)* ) => {
+        {
+            let mut h = stdout();
+            write!(h, $($t)* ).unwrap();
+            h.flush().unwrap();
+        }
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<String> = env::args().skip(1).collect();
+    let matches = App::new("Thesis tool")
+        .about("This tool can be used to find negative proofs of LCL-problems solvability on the Port Numbering model.")
+        .arg(Arg::with_name("n")
+            .help("Sets the number of vertices in the graphs.")
+            .index(1)
+            .required(true)
+        )
+        .arg(Arg::with_name("active_configurations")
+            .help("Sets the active configurations of the LCL-problem.")
+            .index(2)
+            .required(true)
+        )
+        .arg(Arg::with_name("passive_configurations")
+            .help("Sets the passive configurations of the LCL-problem.")
+            .index(3)
+            .required(true)
+        )
+        .get_matches();
 
-    // 3 arguments are required.
-    assert_eq!(args.len(), 3);
+    let n = value_t_or_exit!(matches, "n", usize);
+    let a = matches
+        .value_of("active_configurations")
+        .expect("Parsing parameter 'a' failed.");
+    let p = matches
+        .value_of("passive_configurations")
+        .expect("Parsing parameter 'p' failed.");
 
-    let n = &args[0].parse::<usize>()?;
-    let deg_a = &args[1].parse::<usize>()?;
-    let deg_p = &args[2].parse::<usize>()?;
+    let lcl_problem = LclProblem::new(a, p).expect("Creating LclProblem failed.");
+    print_flush!("Generating biregular nonisomorphic graphs (n={})...", n);
+    let graphs = generate_biregular_graphs(
+        n,
+        lcl_problem.active.get_labels_per_configuration(),
+        lcl_problem.passive.get_labels_per_configuration(),
+    );
+    println!(" {} graphs generated.", graphs.len());
 
-    // Generate graphs.
-    let graphs = generate_biregular_graphs(*n, *deg_a, *deg_p);
+    let encodings = graphs
+        .into_iter()
+        .enumerate()
+        .map(|(i, graph)| {
+            print_flush!("Encoding graph into SAT problem {}... ", i);
+            let sat_encoder = SatEncoder::new(lcl_problem.clone(), graph);
+            let result = sat_encoder.encode();
+            println!("done!");
+            result
+        })
+        .collect_vec();
 
-    // Print each graph in dot format.
-    graphs.into_iter().enumerate().for_each(|(i,x)| {
-        println!(
-            "{}: {:?}, {}: {:?}",
-            x.degree_a, x.partition_a, x.degree_b, x.partition_b
-        );
-        let dot = &x.graph.get_dot();
-        println!("{}", dot);
-
-        let path = format!("./graph_{}.svg", i);
-        save_as_svg(&path, dot).expect(format!("Saving to path {} did not work", path).as_str());
+    encodings.into_iter().enumerate().for_each(|(i, encoding)| {
+        print_flush!("solving SAT problem {}... ", i + 1);
+        let result = SatSolver::solve(encoding);
+        println!("{:?}", result);
     });
 
     Ok(())
