@@ -1,9 +1,11 @@
 mod lcl_problem;
 mod sat_encoding;
+mod sat_solver;
 
-pub use lcl_problem::LclProblem;
 pub use lcl_problem::configurations::Configurations;
-pub use sat_encoding::{SatEncoder, SatResult};
+pub use lcl_problem::LclProblem;
+pub use sat_encoding::SatEncoder;
+pub use sat_solver::{SatResult, SatSolver};
 
 use graph6::string_to_adjacency_matrix;
 use petgraph::{

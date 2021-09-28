@@ -50,7 +50,7 @@ mod tests {
         graphs.into_iter().for_each(|graph| {
             let sat_encoder = SatEncoder::new(lcl_problem.clone(), graph);
             let clauses = sat_encoder.encode();
-            let result = sat_encoder.solve(clauses);
+            let result = SatSolver::solve(clauses);
             assert_eq!(result, SatResult::Unsatisfiable);
         });
 
@@ -73,7 +73,7 @@ mod tests {
         graphs.into_iter().for_each(|graph| {
             let sat_encoder = SatEncoder::new(lcl_problem.clone(), graph);
             let clauses = sat_encoder.encode();
-            let result = sat_encoder.solve(clauses);
+            let result = SatSolver::solve(clauses);
             assert_eq!(result, SatResult::Satisfiable);
         });
 
