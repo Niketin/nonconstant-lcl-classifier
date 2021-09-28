@@ -3,6 +3,10 @@ pub mod configurations;
 use configurations::Configurations;
 use std::collections::HashMap;
 
+/// Locally Checkable Labeling problem for biregular graphs.
+///
+/// Contains configurations for active nodes and passive nodes.
+/// Also contains a symbol map that is used in both configurations' initialization.
 #[derive(Debug, Clone)]
 pub struct LclProblem {
     pub active: Configurations,
