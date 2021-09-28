@@ -1,18 +1,17 @@
 use crate::lcl_problem::LclProblem;
 use crate::BiregularGraph;
 use itertools::Itertools;
-use picorust::picosat;
 
-type Clause = Vec<i32>;
-type Clauses = Vec<Clause>;
-type Permutations = Vec<Vec<u8>>;
+pub type Clause = Vec<i32>;
+pub type Clauses = Vec<Clause>;
+pub type Permutations = Vec<Vec<u8>>;
 
-/// Enumerator for SAT solver's result.
-#[derive(Debug, PartialEq)]
-pub enum SatResult {
-    Satisfiable,
-    Unsatisfiable,
-}
+/// SAT problem encoder for LCL problems and biregular graphs.
+///
+/// `SatEncoder` can be used to encode LCL problems and biregular graphs into CNF DIMACS format.
+/// This encoded form can be used as input to most SAT solvers.
+///
+/// More about SAT [here](https://en.wikipedia.org/wiki/Boolean_satisfiability_problem).
 pub struct SatEncoder {
     lcl_problem: LclProblem,
     graph: BiregularGraph,
@@ -49,8 +48,6 @@ impl SatEncoder {
         let passive_permutations_len: usize = self.passive_permutations.len();
 
         let symbols = self.lcl_problem.symbol_map.values().collect_vec();
-
-        // Add clauses
 
         // 1. Adjacent nodes need to agree on the edge's label.
         // In other words, two adjacent nodes cannot label their shared edge differently.
@@ -141,8 +138,6 @@ impl SatEncoder {
             }
         }
 
-        // End adding clauses
-
         clauses
     }
 
@@ -152,7 +147,7 @@ impl SatEncoder {
     ///
     /// - [Specification](http://www.domagoj-babic.com/uploads/ResearchProjects/Spear/dimacs-cnf.pdf)
     /// - [Some site](https://people.sc.fsu.edu/~jburkardt/data/cnf/cnf.html)
-    pub fn _clauses_into_cnf_dimacs(&self, clauses: &Clauses, variable_count: usize) -> String {
+    pub fn clauses_into_cnf_dimacs(&self, clauses: &Clauses, variable_count: usize) -> String {
         let mut result = String::new();
         result.push_str(&format!("p cnf{} {}\n", variable_count, clauses.len()));
 
@@ -199,7 +194,6 @@ impl SatEncoder {
     }
 
     /// Returns a variable representing an assigned label of an edge.
-    ///
     ///
     /// # Parameters
     /// - `first_active` tells if thefirst node is active or passive. The second node is always in the opposite partition of the graph.
@@ -260,30 +254,6 @@ impl SatEncoder {
         let active_passive_label_variables_size =
             (active_nodes_size * passive_nodes_size * symbols_size) as i32;
         return base + active_passive_label_variables_size + (v as i32);
-    }
-
-    /// Solves SAT problem using PicoSAT.
-    ///
-    /// Returns enumerator [`SatResult`] stating the solver's result.
-    pub fn solve(&self, clauses: Clauses) -> SatResult {
-        let mut psat = picosat::init();
-
-        for c in clauses.iter() {
-            for var in c.iter() {
-                picosat::add(&mut psat, *var);
-            }
-            picosat::add(&mut psat, 0);
-        }
-
-        let result = picosat::sat(&mut psat, -1);
-
-        picosat::reset(&mut psat);
-
-        return match result {
-            10 => SatResult::Satisfiable,
-            20 => SatResult::Unsatisfiable,
-            _ => unimplemented!("Unknown result"),
-        };
     }
 
     fn clause_to_string(&self, clause: &Clause) -> String {
