@@ -1,8 +1,9 @@
 use clap::{value_t_or_exit, App, Arg};
 use itertools::Itertools;
-use std::io;
+use log::info;
 use std::io::stdout;
 use std::io::Write;
+use std::time::Instant;
 use thesis_tool_lib::*;
 
 macro_rules! print_flush {
@@ -16,6 +17,10 @@ macro_rules! print_flush {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize env_logger.
+    env_logger::init();
+
+    // Create new command line program.
     let matches = App::new("Thesis tool")
         .about("This tool can be used to find negative proofs of LCL-problems solvability on the Port Numbering model.")
         .arg(Arg::with_name("n")
@@ -44,14 +49,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .expect("Parsing parameter 'p' failed.");
 
     let lcl_problem = LclProblem::new(a, p).expect("Creating LclProblem failed.");
-    print_flush!("Generating biregular nonisomorphic graphs (n={})...", n);
+
+    // Generate biregular graphs.
+    let now = Instant::now();
+    info!("Generating biregular nonisomorphic graphs (n={})", n);
     let graphs = generate_biregular_graphs(
         n,
         lcl_problem.active.get_labels_per_configuration(),
         lcl_problem.passive.get_labels_per_configuration(),
     );
-    println!(" {} graphs generated.", graphs.len());
+    info!(
+        "Generated {} biregular nonisomorphic graphs in {} s",
+        graphs.len(),
+        now.elapsed().as_secs_f32()
+    );
 
+    // Encode graphs and LCL-problem into SAT problems.
+    let now = Instant::now();
+    info!("Encoding problems and graphs into SAT problems.");
     let encodings = graphs
         .into_iter()
         .enumerate()
@@ -63,12 +78,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             result
         })
         .collect_vec();
+    info!(
+        "Encoded {} SAT problems in {} s",
+        encodings.len(),
+        now.elapsed().as_secs_f32()
+    );
 
+    // Solve SAT problems.
+    let now = Instant::now();
+    info!("Solving all SAT problems.");
     encodings.into_iter().enumerate().for_each(|(i, encoding)| {
         print_flush!("solving SAT problem {}... ", i + 1);
         let result = SatSolver::solve(encoding);
         println!("{:?}", result);
     });
+    info!(
+        "Solved all SAT problems in {} s",
+        now.elapsed().as_secs_f32()
+    );
 
     Ok(())
 }

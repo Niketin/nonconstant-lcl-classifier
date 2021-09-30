@@ -1,23 +1,21 @@
 mod biregular_graph;
 
 use graph6::string_to_adjacency_matrix;
+use itertools::Itertools;
+use log::debug;
 use petgraph::{
     dot::{Config, Dot},
     graph::NodeIndex,
     visit::VisitMap,
     Graph, Undirected,
 };
+use std::time::Instant;
 use std::{collections::HashSet, fs::File, process::Command, process::Stdio};
 use std::{fmt::Debug, io::prelude::*};
 
 pub use biregular_graph::BiregularGraph;
 
-/// Generates simple nonisomorphic biregular graphs.
-pub fn generate_biregular_graphs(
-    graph_size: usize,
-    degree_a: usize,
-    degree_b: usize,
-) -> Vec<BiregularGraph> {
+fn generate_graphs(graph_size: usize) -> String {
     // Use geng and assume it exists in the system.
     let mut command = Command::new("geng");
 
@@ -25,36 +23,91 @@ pub fn generate_biregular_graphs(
     let graphs = command.arg("-bc").arg(graph_size.to_string());
 
     let out = graphs.output().expect("msg");
-    let lines = String::from_utf8(out.stdout).expect("Not in utf8 format");
-    let lines_it = lines.lines();
+    String::from_utf8(out.stdout).expect("Not in utf8 format")
+}
 
+fn graph6_to_petgraph(graph: &str) -> Graph<u32, (), Undirected, u32> {
+    let adjacency_matrix = string_to_adjacency_matrix(graph);
+    let edges = adjacency_matrix_to_edge_list(adjacency_matrix);
+    petgraph::graph::UnGraph::from_edges(&edges)
+}
+
+/// Generates simple nonisomorphic biregular graphs.
+pub fn generate_biregular_graphs(
+    graph_size: usize,
+    degree_a: usize,
+    degree_b: usize,
+) -> Vec<BiregularGraph> {
+    let now = Instant::now();
+
+    let graphs = generate_graphs(graph_size);
+    let lines = graphs.lines();
+
+    debug!(
+        "Generated {} bipartite graphs in {} s.",
+        graphs.lines().count(),
+        now.elapsed().as_secs_f32()
+    );
     let mut graphs_petgraph: Vec<BiregularGraph> = Vec::new();
 
+    let now = Instant::now();
+    let graphs = lines.map(|line| graph6_to_petgraph(line)).collect_vec();
+    debug!(
+        "Transformed {} graph6-formatted graphs to petgraphs in {} s.",
+        graphs.len(),
+        now.elapsed().as_secs_f32()
+    );
+
+    let now = Instant::now();
+    let bipartite_graphs_with_partitions = graphs
+        .into_iter()
+        .filter_map(|graph| {
+            let indices = &graph.node_indices().collect_vec();
+            let t = get_partitions_if_biregular(&graph, indices[0]);
+            if t.is_some() {
+                return Some((graph, t.unwrap()));
+            }
+            None
+        })
+        .collect_vec();
+
+    debug!(
+        "Partitioned {} bipartite graphs in {} s.",
+        bipartite_graphs_with_partitions.len(),
+        now.elapsed().as_secs_f32()
+    );
+
+    let now = Instant::now();
     // Iterate through geng results.
-    for line in lines_it {
-        // Geng outputs the graphs in Graph6-format.
-        // These need to be transformed into adjacency matrix.
-        let adjacency_matrix = string_to_adjacency_matrix(line);
-        let edges = adjacency_matrix_to_edge_list(adjacency_matrix);
-        let graph: Graph<u32, (), Undirected, u32> = petgraph::graph::UnGraph::from_edges(&edges);
-        let indices = &graph.node_indices().collect::<Vec<_>>();
-        let res: Option<(Vec<NodeIndex>, Vec<NodeIndex>)> = is_bipartite(&graph, indices[0]);
-        if let Some((node_indices_a, node_indices_b)) = res {
-            let biregular_graph =
-                match is_biregular(&graph, &node_indices_a, &node_indices_b, degree_a, degree_b) {
-                    None => continue,
-                    Some((a, b, c, d)) => BiregularGraph {
-                        graph,
-                        partition_a: a.clone(),
-                        partition_b: b.clone(),
-                        degree_a: c,
-                        degree_b: d,
-                    },
-                };
-            // Save the graph.
-            graphs_petgraph.push(biregular_graph);
+    for (graph, (partition_a, partition_b)) in bipartite_graphs_with_partitions {
+        if !is_biregular(&graph, &partition_a, &partition_b, degree_a, degree_b) {
+            continue;
         }
+        let partition_a_degree = graph.neighbors(partition_a[0]).count();
+
+        // Swap partitions if they are in wrong order.
+        let (partition_a, partition_b) = if partition_a_degree != degree_a {
+            (partition_b, partition_a)
+        } else {
+            (partition_a, partition_b)
+        };
+
+        let biregular_graph = BiregularGraph {
+            graph,
+            partition_a,
+            partition_b,
+            degree_a,
+            degree_b,
+        };
+
+        // Save the graph.
+        graphs_petgraph.push(biregular_graph);
     }
+    debug!(
+        "Generated {} biregular graphs in {} s.",
+        graphs_petgraph.len(),
+        now.elapsed().as_secs_f32()
+    );
 
     return graphs_petgraph;
 }
@@ -123,7 +176,10 @@ fn adjacency_matrix_to_edge_list((adjacency_matrix, size): (Vec<f32>, usize)) ->
 }
 
 /// Checks bipartity of a graph and returns the partitions.
-fn is_bipartite(
+///
+/// The order of the partitions is determined by `start` node.
+/// `start` node is always in the first partition.
+fn get_partitions_if_biregular(
     graph: &Graph<u32, (), Undirected, u32>,
     start: NodeIndex<u32>,
 ) -> Option<(Vec<NodeIndex<u32>>, Vec<NodeIndex<u32>>)> {
@@ -131,7 +187,7 @@ fn is_bipartite(
     red.visit(start);
     let mut blue: HashSet<NodeIndex<u32>> = HashSet::with_capacity(graph.node_count());
 
-    let mut stack = ::std::collections::VecDeque::new();
+    let mut stack = std::collections::VecDeque::new();
     stack.push_front(start);
 
     while let Some(node) = stack.pop_front() {
@@ -205,23 +261,11 @@ fn is_biregular<'a>(
     node_indices_b: &'a Vec<NodeIndex<u32>>,
     degree_a: usize,
     degree_b: usize,
-) -> Option<(
-    &'a Vec<NodeIndex<u32>>,
-    &'a Vec<NodeIndex<u32>>,
-    usize,
-    usize,
-)> {
-    if all_nodes_with_degree(graph, node_indices_a, degree_a)
-        && all_nodes_with_degree(graph, node_indices_b, degree_b)
-    {
-        Some((&node_indices_a, &node_indices_b, degree_a, degree_b))
-    } else if all_nodes_with_degree(graph, node_indices_a, degree_b)
-        && all_nodes_with_degree(graph, node_indices_b, degree_a)
-    {
-        Some((&node_indices_b, &node_indices_a, degree_a, degree_b))
-    } else {
-        None
-    }
+) -> bool {
+    (all_nodes_with_degree(graph, node_indices_a, degree_a)
+        && all_nodes_with_degree(graph, node_indices_b, degree_b))
+        || (all_nodes_with_degree(graph, node_indices_a, degree_b)
+            && all_nodes_with_degree(graph, node_indices_b, degree_a))
 }
 
 #[cfg(test)]
