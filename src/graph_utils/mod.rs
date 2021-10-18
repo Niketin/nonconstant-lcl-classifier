@@ -1,17 +1,15 @@
 mod biregular_graph;
+mod dot_format;
 
 use graph6::string_to_adjacency_matrix;
 use itertools::Itertools;
 
-use petgraph::{
-    dot::{Config, Dot},
-    graph::NodeIndex,
-    Graph, Undirected,
-};
-use std::{fmt::Debug, io::prelude::*};
+use petgraph::{graph::NodeIndex, Graph, Undirected};
+use std::io::prelude::*;
 use std::{fs::File, process::Command, process::Stdio};
 
 pub use biregular_graph::BiregularGraph;
+pub use dot_format::DotFormat;
 
 fn generate_bipartite_graphs_graph8(graph_size: usize) -> String {
     // Use geng and assume it exists in the system.
@@ -56,24 +54,6 @@ pub fn save_as_svg(path: &str, dot: &str) -> Result<(), Box<dyn std::error::Erro
     file.write_all(s.as_bytes())?;
 
     Ok(())
-}
-
-/// Trait for things that can have a representation in .dot format.
-pub trait DotFormat {
-    fn get_dot(&self) -> String;
-}
-
-impl<N, E> DotFormat for Graph<N, E, Undirected>
-where
-    E: Debug,
-    N: Debug,
-{
-    fn get_dot(&self) -> String {
-        format!(
-            "{:?}",
-            Dot::with_config(&self, &[Config::EdgeNoLabel, Config::NodeIndexLabel])
-        )
-    }
 }
 
 /// Transforms adjacency matrix into list of edges.
