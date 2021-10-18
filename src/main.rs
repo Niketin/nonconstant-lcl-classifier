@@ -53,7 +53,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Generate biregular graphs.
     let now = Instant::now();
     info!("Generating biregular nonisomorphic graphs (n={})", n);
-    let graphs = generate_biregular_graphs(
+    let graphs = BiregularGraph::generate(
         n,
         lcl_problem.active.get_labels_per_configuration(),
         lcl_problem.passive.get_labels_per_configuration(),
@@ -113,7 +113,7 @@ mod tests {
         let deg_a = lcl_problem.active.get_labels_per_configuration();
         let deg_p = lcl_problem.passive.get_labels_per_configuration();
 
-        let graphs = generate_biregular_graphs(n, deg_a, deg_p);
+        let graphs = BiregularGraph::generate(n, deg_a, deg_p);
 
         assert!(!graphs.is_empty());
 
@@ -137,7 +137,7 @@ mod tests {
         let deg_a = lcl_problem.active.get_labels_per_configuration();
         let deg_p = lcl_problem.passive.get_labels_per_configuration();
 
-        let graphs = generate_biregular_graphs(n, deg_a, deg_p);
+        let graphs = BiregularGraph::generate(n, deg_a, deg_p);
 
         assert!(!graphs.is_empty());
         graphs.into_iter().for_each(|graph| {
