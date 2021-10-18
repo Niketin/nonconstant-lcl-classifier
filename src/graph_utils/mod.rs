@@ -2,20 +2,18 @@ mod biregular_graph;
 
 use graph6::string_to_adjacency_matrix;
 use itertools::Itertools;
-use log::debug;
+
 use petgraph::{
     dot::{Config, Dot},
     graph::NodeIndex,
-    visit::VisitMap,
     Graph, Undirected,
 };
-use std::time::Instant;
-use std::{collections::HashSet, fs::File, process::Command, process::Stdio};
 use std::{fmt::Debug, io::prelude::*};
+use std::{fs::File, process::Command, process::Stdio};
 
 pub use biregular_graph::BiregularGraph;
 
-fn generate_graphs(graph_size: usize) -> String {
+fn generate_bipartite_graphs_graph8(graph_size: usize) -> String {
     // Use geng and assume it exists in the system.
     let mut command = Command::new("geng");
 
@@ -30,86 +28,6 @@ fn graph6_to_petgraph(graph: &str) -> Graph<u32, (), Undirected, u32> {
     let adjacency_matrix = string_to_adjacency_matrix(graph);
     let edges = adjacency_matrix_to_edge_list(adjacency_matrix);
     petgraph::graph::UnGraph::from_edges(&edges)
-}
-
-/// Generates simple nonisomorphic biregular graphs.
-pub fn generate_biregular_graphs(
-    graph_size: usize,
-    degree_a: usize,
-    degree_b: usize,
-) -> Vec<BiregularGraph> {
-    let now = Instant::now();
-
-    let graphs = generate_graphs(graph_size);
-    let lines = graphs.lines();
-
-    debug!(
-        "Generated {} bipartite graphs in {} s.",
-        graphs.lines().count(),
-        now.elapsed().as_secs_f32()
-    );
-    let mut graphs_petgraph: Vec<BiregularGraph> = Vec::new();
-
-    let now = Instant::now();
-    let graphs = lines.map(|line| graph6_to_petgraph(line)).collect_vec();
-    debug!(
-        "Transformed {} graph6-formatted graphs to petgraphs in {} s.",
-        graphs.len(),
-        now.elapsed().as_secs_f32()
-    );
-
-    let now = Instant::now();
-    let bipartite_graphs_with_partitions = graphs
-        .into_iter()
-        .filter_map(|graph| {
-            let indices = &graph.node_indices().collect_vec();
-            let t = get_partitions_if_biregular(&graph, indices[0]);
-            if t.is_some() {
-                return Some((graph, t.unwrap()));
-            }
-            None
-        })
-        .collect_vec();
-
-    debug!(
-        "Partitioned {} bipartite graphs in {} s.",
-        bipartite_graphs_with_partitions.len(),
-        now.elapsed().as_secs_f32()
-    );
-
-    let now = Instant::now();
-    // Iterate through geng results.
-    for (graph, (partition_a, partition_b)) in bipartite_graphs_with_partitions {
-        if !is_biregular(&graph, &partition_a, &partition_b, degree_a, degree_b) {
-            continue;
-        }
-        let partition_a_degree = graph.neighbors(partition_a[0]).count();
-
-        // Swap partitions if they are in wrong order.
-        let (partition_a, partition_b) = if partition_a_degree != degree_a {
-            (partition_b, partition_a)
-        } else {
-            (partition_a, partition_b)
-        };
-
-        let biregular_graph = BiregularGraph {
-            graph,
-            partition_a,
-            partition_b,
-            degree_a,
-            degree_b,
-        };
-
-        // Save the graph.
-        graphs_petgraph.push(biregular_graph);
-    }
-    debug!(
-        "Generated {} biregular graphs in {} s.",
-        graphs_petgraph.len(),
-        now.elapsed().as_secs_f32()
-    );
-
-    return graphs_petgraph;
 }
 
 /// Writes dot graph into svg file.
@@ -175,97 +93,91 @@ fn adjacency_matrix_to_edge_list((adjacency_matrix, size): (Vec<f32>, usize)) ->
     return result;
 }
 
-/// Checks bipartity of a graph and returns the partitions.
-///
-/// The order of the partitions is determined by `start` node.
-/// `start` node is always in the first partition.
-fn get_partitions_if_biregular(
-    graph: &Graph<u32, (), Undirected, u32>,
-    start: NodeIndex<u32>,
-) -> Option<(Vec<NodeIndex<u32>>, Vec<NodeIndex<u32>>)> {
-    let mut red: HashSet<NodeIndex<u32>> = HashSet::with_capacity(graph.node_count());
-    red.visit(start);
-    let mut blue: HashSet<NodeIndex<u32>> = HashSet::with_capacity(graph.node_count());
+fn generate_bipartite_graphs_with_partition_sizes_and_degree_bounds_graph8(
+    n1: usize,
+    n2: usize,
+    d1_low: usize,
+    d2_low: usize,
+    d1_high: usize,
+    d2_high: usize,
+) -> String {
+    // Use geng and assume it exists in the system.
+    let mut command = Command::new("genbg");
 
-    let mut stack = std::collections::VecDeque::new();
-    stack.push_front(start);
+    let parameter_degree_lower_bound = format!("-d{}:{}", d1_low, d2_low);
+    let parameter_degree_upper_bound = format!("-D{}:{}", d1_high, d2_high);
 
-    while let Some(node) = stack.pop_front() {
-        let is_red = red.contains(&node);
-        let is_blue = blue.contains(&node);
+    // Flag -c gives us connected graphs.
+    let graphs = command
+        .arg("-c")
+        .arg(parameter_degree_lower_bound)
+        .arg(parameter_degree_upper_bound)
+        .arg(n1.to_string())
+        .arg(n2.to_string());
 
-        assert!(is_red ^ is_blue);
+    let out = graphs.output().expect("msg");
+    String::from_utf8(out.stdout).expect("Not in utf8 format")
+}
 
-        for neighbour in graph.neighbors(node) {
-            let is_neigbour_red = red.is_visited(&neighbour);
-            let is_neigbour_blue = blue.is_visited(&neighbour);
+fn generate_biregular_graphs_with_partition_sizes_graph8(
+    n1: usize,
+    n2: usize,
+    d1: usize,
+    d2: usize,
+) -> String {
+    generate_bipartite_graphs_with_partition_sizes_and_degree_bounds_graph8(n1, n2, d1, d2, d1, d2)
+}
 
-            if (is_red && is_neigbour_red) || (is_blue && is_neigbour_blue) {
-                return None; // Not bipartite
-            }
-
-            if !is_neigbour_red && !is_neigbour_blue {
-                match (is_red, is_blue) {
-                    (true, false) => {
-                        blue.visit(neighbour);
-                    }
-                    (false, true) => {
-                        red.visit(neighbour);
-                    }
-                    (_, _) => {
-                        panic!("The invariant doesn't hold");
-                    }
-                }
-
-                stack.push_back(neighbour);
-            }
-        }
+fn generate_biregular_graphs_with_total_size_graph8(
+    n: usize,
+    d1: usize,
+    d2: usize,
+) -> Vec<((usize, usize), String)> {
+    let mut graphs = Vec::new();
+    for (n1, n2) in biregular_partition_sizes(n, d1, d2) {
+        graphs.push((
+            (n1, n2),
+            generate_biregular_graphs_with_partition_sizes_graph8(n1, n2, d1, d2),
+        ));
     }
-    let red_vec: Vec<NodeIndex<u32>> = red.into_iter().collect();
-    let blue_vec: Vec<NodeIndex<u32>> = blue.into_iter().collect();
-    Some((red_vec, blue_vec))
+    graphs
 }
 
-/// Check if all nodes at node_indices have the specified degree.
-///
-/// * `graph` - Graph which nodes are checked against the degree criterion.
-/// * `node_indices` - Indices of the nodes which will be checked.
-/// * `degree` - The degree.
-fn all_nodes_with_degree(
-    graph: &Graph<u32, (), Undirected, u32>,
-    node_indices: &Vec<NodeIndex<u32>>,
-    degree: usize,
-) -> bool {
-    node_indices
-        .into_iter()
-        .all(|x| &graph.neighbors(*x).count() == &degree)
+fn b_sums(n: usize) -> Vec<(usize, usize)> {
+    (1..=(n / 2)).map(|i| (i, n - i)).collect_vec()
 }
 
-/// Checks if the graph is biregular.
-///
-/// Graph is biregular if it is bipartite, and
-/// nodes in set A have degree degree_a
-/// and
-/// nodes in set B have degree degree_b
-///
-/// Bipartity is assumed and not checked.
-///
-/// * `graph` - Graph which is checked against the biregularity criterion.
-/// * `node_indices_a` - Indices of the nodes in partition a.
-/// * `node_indices_b` - Indices of the nodes in partition b.
-/// * `degree_a` - The assumed degree of nodes in partition a.
-/// * `degree_b` - The assumed degree of nodes in partition b.
-fn is_biregular<'a>(
+fn biregular_partition_sizes(n: usize, d1: usize, d2: usize) -> Vec<(usize, usize)> {
+    b_sums(n)
+        .iter()
+        .filter_map(|(n1, n2)| {
+            if d1 * n1 == d2 * n2 {
+                return Some((*n1, *n2));
+            } else if d1 * n2 == d2 * n1 {
+                return Some((*n2, *n1));
+            }
+            None
+        })
+        .collect_vec()
+}
+
+fn get_partitions(
     graph: &Graph<u32, (), Undirected, u32>,
-    node_indices_a: &'a Vec<NodeIndex<u32>>,
-    node_indices_b: &'a Vec<NodeIndex<u32>>,
-    degree_a: usize,
-    degree_b: usize,
-) -> bool {
-    (all_nodes_with_degree(graph, node_indices_a, degree_a)
-        && all_nodes_with_degree(graph, node_indices_b, degree_b))
-        || (all_nodes_with_degree(graph, node_indices_a, degree_b)
-            && all_nodes_with_degree(graph, node_indices_b, degree_a))
+    n1: usize,
+    n2: usize,
+) -> (Vec<NodeIndex<u32>>, Vec<NodeIndex<u32>>) {
+    assert_eq!(graph.node_count(), n1 + n2);
+
+    let node_indices_a: Vec<NodeIndex<u32>> = graph
+        .node_indices()
+        .filter(|i| i.index() < n1)
+        .collect_vec();
+    let node_indices_p: Vec<NodeIndex<u32>> = graph
+        .node_indices()
+        .filter(|i| i.index() >= n1)
+        .collect_vec();
+
+    (node_indices_a, node_indices_p)
 }
 
 #[cfg(test)]
@@ -287,12 +199,12 @@ mod tests {
     }
 
     fn count_biregular_graphs(n: usize, a: usize, b: usize) -> usize {
-        generate_biregular_graphs(n, a, b).len()
+        BiregularGraph::generate(n, a, b).len()
     }
 
     #[test]
     fn test_biregular_graph_partitions_have_correct_degrees() {
-        let graphs = generate_biregular_graphs(5, 3, 2);
+        let graphs = BiregularGraph::generate(5, 3, 2);
 
         for graph in graphs {
             assert_eq!(graph.degree_a, 3);
@@ -305,5 +217,18 @@ mod tests {
                 assert_eq!(graph.graph.neighbors(node).count(), 2)
             }
         }
+    }
+
+    #[test]
+    fn test_b_sums() {
+        assert_eq!(b_sums(3), vec![(1, 2)]);
+        assert_eq!(b_sums(4), vec![(1, 3), (2, 2)]);
+        assert_eq!(b_sums(5), vec![(1, 4), (2, 3)]);
+    }
+
+    #[test]
+    fn test_biregular_partition_sizes() {
+        assert_eq!(biregular_partition_sizes(5, 2, 3).len(), 1);
+        assert_eq!(biregular_partition_sizes(5, 3, 2).len(), 1);
     }
 }
