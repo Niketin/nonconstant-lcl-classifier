@@ -11,18 +11,9 @@ use std::{fs::File, process::Command, process::Stdio};
 pub use biregular_graph::BiregularGraph;
 pub use dot_format::DotFormat;
 
-fn generate_bipartite_graphs_graph8(graph_size: usize) -> String {
-    // Use geng and assume it exists in the system.
-    let mut command = Command::new("geng");
+type UndirectedGraph = Graph<u32, (), Undirected>;
 
-    // Flag -b gives us bipartite graphs and -c gives us connected graphs.
-    let graphs = command.arg("-bc").arg(graph_size.to_string());
-
-    let out = graphs.output().expect("msg");
-    String::from_utf8(out.stdout).expect("Not in utf8 format")
-}
-
-fn graph6_to_petgraph(graph: &str) -> Graph<u32, (), Undirected, u32> {
+fn graph6_to_petgraph(graph: &str) -> UndirectedGraph {
     let adjacency_matrix = string_to_adjacency_matrix(graph);
     let edges = adjacency_matrix_to_edge_list(adjacency_matrix);
     petgraph::graph::UnGraph::from_edges(&edges)
@@ -73,7 +64,7 @@ fn adjacency_matrix_to_edge_list((adjacency_matrix, size): (Vec<f32>, usize)) ->
     return result;
 }
 
-fn generate_bipartite_graphs_with_partition_sizes_and_degree_bounds_graph8(
+fn generate_bipartite_graphs_with_degree_bounds_graph8(
     n1: usize,
     n2: usize,
     d1_low: usize,
@@ -99,15 +90,6 @@ fn generate_bipartite_graphs_with_partition_sizes_and_degree_bounds_graph8(
     String::from_utf8(out.stdout).expect("Not in utf8 format")
 }
 
-fn generate_biregular_graphs_with_partition_sizes_graph8(
-    n1: usize,
-    n2: usize,
-    d1: usize,
-    d2: usize,
-) -> String {
-    generate_bipartite_graphs_with_partition_sizes_and_degree_bounds_graph8(n1, n2, d1, d2, d1, d2)
-}
-
 fn generate_biregular_graphs_with_total_size_graph8(
     n: usize,
     d1: usize,
@@ -117,18 +99,18 @@ fn generate_biregular_graphs_with_total_size_graph8(
     for (n1, n2) in biregular_partition_sizes(n, d1, d2) {
         graphs.push((
             (n1, n2),
-            generate_biregular_graphs_with_partition_sizes_graph8(n1, n2, d1, d2),
+            generate_bipartite_graphs_with_degree_bounds_graph8(n1, n2, d1, d2, d1, d2),
         ));
     }
     graphs
 }
 
-fn b_sums(n: usize) -> Vec<(usize, usize)> {
-    (1..=(n / 2)).map(|i| (i, n - i)).collect_vec()
+fn pairs_with_sum(sum: usize) -> Vec<(usize, usize)> {
+    (1..=(sum / 2)).map(|i| (i, sum - i)).collect_vec()
 }
 
 fn biregular_partition_sizes(n: usize, d1: usize, d2: usize) -> Vec<(usize, usize)> {
-    b_sums(n)
+    pairs_with_sum(n)
         .iter()
         .filter_map(|(n1, n2)| {
             if d1 * n1 == d2 * n2 {
@@ -142,7 +124,7 @@ fn biregular_partition_sizes(n: usize, d1: usize, d2: usize) -> Vec<(usize, usiz
 }
 
 fn get_partitions(
-    graph: &Graph<u32, (), Undirected, u32>,
+    graph: &UndirectedGraph,
     n1: usize,
     n2: usize,
 ) -> (Vec<NodeIndex<u32>>, Vec<NodeIndex<u32>>) {
@@ -160,55 +142,134 @@ fn get_partitions(
     (node_indices_a, node_indices_p)
 }
 
+fn extend_to_multigraphs(
+    input_path: &str,
+    max_edge_multiplicity: usize,
+    edges: usize,
+    max_degree: usize,
+) -> String {
+    // Use multig and assume it exists in the system.
+    let mut command = Command::new("multig");
+
+    command
+        .arg(format!("-e{}", edges))
+        .arg(format!("-D{}", max_degree))
+        .arg(format!("-m{}", max_edge_multiplicity))
+        .arg("-T")
+        .arg(input_path);
+
+    let out = command.output().expect("msg");
+    String::from_utf8(out.stdout).expect("Not in utf8 format")
+}
+
+fn multigraph_string_to_petgraph(
+    multigraph_string: String,
+) -> Result<Vec<UndirectedGraph>, Box<dyn std::error::Error>> {
+    let mut graphs: Vec<UndirectedGraph> = vec![];
+
+    for line in multigraph_string.lines() {
+        let words = line.split_ascii_whitespace();
+
+        let mut values = words.map(|word| word.parse::<u32>());
+
+        let _number_of_vertices = values.next().ok_or("TODO")??;
+        let number_of_edges = values.next().ok_or("TODO")??;
+
+        if number_of_edges == 0 {
+            continue;
+        }
+
+        let mut edges = vec![];
+
+        for (v1, v2, mul) in values.tuples() {
+            let v1 = v1?;
+            let v2 = v2?;
+            for _ in 0..mul? {
+                edges.push((v1, v2));
+            }
+        }
+
+        let graph: UndirectedGraph = petgraph::graph::UnGraph::from_edges(&edges);
+        graphs.push(graph);
+    }
+
+    Ok(graphs)
+}
+
+fn partition_is_regular(graph: &UndirectedGraph, partition: &Vec<NodeIndex>) -> bool {
+    let degrees = partition
+        .iter()
+        .map(|node| graph.neighbors(*node).count())
+        .collect_vec();
+    degrees.windows(2).all(|window| window[0] == window[1])
+}
+
+fn generate_biregular_graphs_unzipped_graph8(
+    graph_size: usize,
+    degree_a: usize,
+    degree_b: usize,
+) -> (Vec<(usize, usize)>, Vec<String>) {
+    generate_biregular_graphs_with_total_size_graph8(graph_size, degree_a, degree_b)
+        .iter()
+        .cloned()
+        .unzip()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_generating_biregular_graphs() {
-        assert_eq!(count_biregular_graphs(5, 3, 2), 1);
-        assert_eq!(count_biregular_graphs(5, 2, 3), 1);
-
-        assert_eq!(count_biregular_graphs(7, 2, 3), 0);
-        assert_eq!(count_biregular_graphs(7, 3, 2), 0);
-
-        assert_eq!(count_biregular_graphs(8, 5, 3), 1);
-        assert_eq!(count_biregular_graphs(8, 3, 5), 1);
-
-        assert_eq!(count_biregular_graphs(8, 3, 3), 1);
-    }
-
-    fn count_biregular_graphs(n: usize, a: usize, b: usize) -> usize {
-        BiregularGraph::generate(n, a, b).len()
-    }
-
-    #[test]
-    fn test_biregular_graph_partitions_have_correct_degrees() {
-        let graphs = BiregularGraph::generate(5, 3, 2);
-
-        for graph in graphs {
-            assert_eq!(graph.degree_a, 3);
-            assert_eq!(graph.degree_b, 2);
-            for node in graph.partition_a {
-                assert_eq!(graph.graph.neighbors(node).count(), 3)
-            }
-
-            for node in graph.partition_b {
-                assert_eq!(graph.graph.neighbors(node).count(), 2)
-            }
-        }
+    fn get_indices(x: &[usize], g: &UndirectedGraph) -> Vec<NodeIndex> {
+        x.iter()
+            .map(|i| g.node_indices().find(|x| x.index() == *i).unwrap())
+            .collect_vec()
     }
 
     #[test]
     fn test_b_sums() {
-        assert_eq!(b_sums(3), vec![(1, 2)]);
-        assert_eq!(b_sums(4), vec![(1, 3), (2, 2)]);
-        assert_eq!(b_sums(5), vec![(1, 4), (2, 3)]);
+        assert_eq!(pairs_with_sum(3), vec![(1, 2)]);
+        assert_eq!(pairs_with_sum(4), vec![(1, 3), (2, 2)]);
+        assert_eq!(pairs_with_sum(5), vec![(1, 4), (2, 3)]);
     }
 
     #[test]
     fn test_biregular_partition_sizes() {
         assert_eq!(biregular_partition_sizes(5, 2, 3).len(), 1);
         assert_eq!(biregular_partition_sizes(5, 3, 2).len(), 1);
+    }
+
+    #[test]
+    fn test_partition_is_regular() {
+        let edges = vec![(0, 1), (0, 1), (1, 2), (1, 2)];
+
+        let graph: UndirectedGraph = petgraph::graph::UnGraph::from_edges(edges);
+
+        let p1 = get_indices(&[0, 2], &graph);
+        let p2 = get_indices(&[1], &graph);
+
+        for partition in [p1, p2] {
+            assert!(partition_is_regular(&graph, &partition))
+        }
+
+        let p3 = [0, 1]
+            .iter()
+            .map(|i| graph.node_indices().find(|x| x.index() == *i).unwrap())
+            .collect_vec();
+
+        assert!(!partition_is_regular(&graph, &p3));
+    }
+
+    #[test]
+    fn test_partition_is_regular2() {
+        let edges = vec![(0, 2), (0, 3), (0, 4), (1, 2), (1, 3), (1, 4)];
+
+        let graph: UndirectedGraph = petgraph::graph::UnGraph::from_edges(edges);
+
+        let p1 = get_indices(&[0, 1], &graph);
+        let p2 = get_indices(&[2, 3, 4], &graph);
+
+        for partition in [p1, p2] {
+            assert!(partition_is_regular(&graph, &partition))
+        }
     }
 }
