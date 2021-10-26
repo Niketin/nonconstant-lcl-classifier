@@ -1,20 +1,10 @@
 use clap::{value_t_or_exit, App, Arg};
+use console::style;
+use indicatif::ProgressBar;
 use itertools::Itertools;
 use log::info;
-use std::io::stdout;
-use std::io::Write;
 use std::time::Instant;
 use thesis_tool_lib::*;
-
-macro_rules! print_flush {
-    ( $($t:tt)* ) => {
-        {
-            let mut h = stdout();
-            write!(h, $($t)* ).unwrap();
-            h.flush().unwrap();
-        }
-    }
-}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize env_logger.
@@ -38,6 +28,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .index(3)
             .required(true)
         )
+        .arg(Arg::with_name("simple_graphs_only")
+            .help("Generate only simple graphs.")
+            .short("s")
+            .long("simple-graphs-only")
+            .required(false)
+        )
+        .arg(Arg::with_name("progress")
+            .help("Show progress.")
+            .short("p")
+            .long("show-progress")
+            .required(false)
+        )
         .get_matches();
 
     let n = value_t_or_exit!(matches, "n", usize);
@@ -48,36 +50,54 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .value_of("passive_configurations")
         .expect("Parsing parameter 'p' failed.");
 
-    let lcl_problem = LclProblem::new(a, p).expect("Creating LclProblem failed.");
+    let simple_graphs_only = matches.is_present("simple_graphs_only");
+    let show_progress = matches.is_present("progress");
+    let get_progress_bar = |n: u64| {
+        if show_progress {
+            ProgressBar::new(n)
+        } else {
+            ProgressBar::hidden()
+        }
+    };
+
+    let graph_generator = if simple_graphs_only {
+        BiregularGraph::generate_simple
+    } else {
+        BiregularGraph::generate_multigraph
+    };
+
+    let lcl_problem = LclProblem::new(a, p).expect("Parsing the LCL problem failed.");
+    let a_len = lcl_problem.active.get_labels_per_configuration();
+    let p_len = lcl_problem.passive.get_labels_per_configuration();
 
     // Generate biregular graphs.
     let now = Instant::now();
-    info!("Generating biregular nonisomorphic graphs (n={})", n);
-    let graphs = BiregularGraph::generate_all(
-        n,
-        lcl_problem.active.get_labels_per_configuration(),
-        lcl_problem.passive.get_labels_per_configuration(),
+    println!(
+        "{} Generating nonisomorphic ({},{})-biregular graphs of size n={}...",
+        style("[1/3]").bold().dim(),
+        a_len,
+        p_len,
+        n
     );
+    let graphs = graph_generator(n, a_len, p_len);
     info!(
-        "Generated {} biregular nonisomorphic graphs in {} s",
+        "Generated {} nonisomorphic biregular graphs in {} s",
         graphs.len(),
         now.elapsed().as_secs_f32()
     );
 
     // Encode graphs and LCL-problem into SAT problems.
     let now = Instant::now();
-    info!("Encoding problems and graphs into SAT problems.");
-    let encodings = graphs
-        .into_iter()
-        .enumerate()
-        .map(|(i, graph)| {
-            print_flush!("Encoding graph into SAT problem {}... ", i);
-            let sat_encoder = SatEncoder::new(lcl_problem.clone(), graph);
-            let result = sat_encoder.encode();
-            println!("done!");
-            result
-        })
+    println!(
+        "{} Encoding problems and graphs into SAT problems...",
+        style("[2/3]").bold().dim(),
+    );
+    let pb = get_progress_bar(graphs.len() as u64);
+    let encodings = pb
+        .wrap_iter(graphs.into_iter())
+        .map(|graph| SatEncoder::new(lcl_problem.clone(), graph).encode())
         .collect_vec();
+    pb.finish_and_clear();
     info!(
         "Encoded {} SAT problems in {} s",
         encodings.len(),
@@ -86,14 +106,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Solve SAT problems.
     let now = Instant::now();
-    info!("Solving all SAT problems.");
-    encodings.into_iter().enumerate().for_each(|(i, encoding)| {
-        print_flush!("solving SAT problem {}... ", i + 1);
-        let result = SatSolver::solve(encoding);
-        println!("{:?}", result);
-    });
+    println!(
+        "{} Solving SAT problems...",
+        style("[3/3]").bold().dim(),
+    );
+
+    let mut found = false;
+    let pb = get_progress_bar(encodings.len() as u64);
+    for encoding in encodings {
+        let result = SatSolver::solve(&encoding);
+        pb.inc(1);
+        if result == SatResult::Unsatisfiable {
+            found = true;
+            break;
+        }
+    }
+    pb.finish_and_clear();
+
+    if found {
+        println!("An unsatisfiable result found!");
+    } else {
+        println!("No unsatisfiable results.");
+    }
+
     info!(
-        "Solved all SAT problems in {} s",
+        "Time used for solving SAT problems is {} s",
         now.elapsed().as_secs_f32()
     );
 
@@ -120,7 +157,7 @@ mod tests {
         graphs.into_iter().for_each(|graph| {
             let sat_encoder = SatEncoder::new(lcl_problem.clone(), graph);
             let clauses = sat_encoder.encode();
-            let result = SatSolver::solve(clauses);
+            let result = SatSolver::solve(&clauses);
             assert_eq!(result, SatResult::Unsatisfiable);
         });
 
@@ -137,13 +174,13 @@ mod tests {
         let deg_a = lcl_problem.active.get_labels_per_configuration();
         let deg_p = lcl_problem.passive.get_labels_per_configuration();
 
-        let graphs = BiregularGraph::generate_all(n, deg_a, deg_p);
+        let graphs = BiregularGraph::generate_multigraph(n, deg_a, deg_p);
 
         assert!(!graphs.is_empty());
         graphs.into_iter().for_each(|graph| {
             let sat_encoder = SatEncoder::new(lcl_problem.clone(), graph);
             let clauses = sat_encoder.encode();
-            let result = SatSolver::solve(clauses);
+            let result = SatSolver::solve(&clauses);
             assert_eq!(result, SatResult::Satisfiable);
         });
 
@@ -160,14 +197,14 @@ mod tests {
         let deg_a = lcl_problem.active.get_labels_per_configuration();
         let deg_p = lcl_problem.passive.get_labels_per_configuration();
 
-        let graphs = BiregularGraph::generate_all(n, deg_a, deg_p);
+        let graphs = BiregularGraph::generate_multigraph(n, deg_a, deg_p);
 
         assert!(!graphs.is_empty());
 
         let mut results = graphs.into_iter().map(|graph| {
             let sat_encoder = SatEncoder::new(lcl_problem.clone(), graph);
             let clauses = sat_encoder.encode();
-            SatSolver::solve(clauses)
+            SatSolver::solve(&clauses)
         });
 
         // At least one result is unsatisfiable.
