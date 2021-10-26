@@ -53,7 +53,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Generate biregular graphs.
     let now = Instant::now();
     info!("Generating biregular nonisomorphic graphs (n={})", n);
-    let graphs = BiregularGraph::generate(
+    let graphs = BiregularGraph::generate_all(
         n,
         lcl_problem.active.get_labels_per_configuration(),
         lcl_problem.passive.get_labels_per_configuration(),
@@ -113,7 +113,7 @@ mod tests {
         let deg_a = lcl_problem.active.get_labels_per_configuration();
         let deg_p = lcl_problem.passive.get_labels_per_configuration();
 
-        let graphs = BiregularGraph::generate(n, deg_a, deg_p);
+        let graphs = BiregularGraph::generate_simple(n, deg_a, deg_p);
 
         assert!(!graphs.is_empty());
 
@@ -137,7 +137,7 @@ mod tests {
         let deg_a = lcl_problem.active.get_labels_per_configuration();
         let deg_p = lcl_problem.passive.get_labels_per_configuration();
 
-        let graphs = BiregularGraph::generate(n, deg_a, deg_p);
+        let graphs = BiregularGraph::generate_all(n, deg_a, deg_p);
 
         assert!(!graphs.is_empty());
         graphs.into_iter().for_each(|graph| {
@@ -146,6 +146,32 @@ mod tests {
             let result = SatSolver::solve(clauses);
             assert_eq!(result, SatResult::Satisfiable);
         });
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_lcl_on_n10_graphs_unsatisfiable() -> Result<(), Box<dyn std::error::Error>> {
+        let n = 10;
+
+        let a = "M U U\nP P P";
+        let p = "M M\nP U\nU U";
+        let lcl_problem = LclProblem::new(a, p)?;
+        let deg_a = lcl_problem.active.get_labels_per_configuration();
+        let deg_p = lcl_problem.passive.get_labels_per_configuration();
+
+        let graphs = BiregularGraph::generate_all(n, deg_a, deg_p);
+
+        assert!(!graphs.is_empty());
+
+        let mut results = graphs.into_iter().map(|graph| {
+            let sat_encoder = SatEncoder::new(lcl_problem.clone(), graph);
+            let clauses = sat_encoder.encode();
+            SatSolver::solve(clauses)
+        });
+
+        // At least one result is unsatisfiable.
+        assert!(results.any(|result| { result == SatResult::Unsatisfiable }));
 
         Ok(())
     }

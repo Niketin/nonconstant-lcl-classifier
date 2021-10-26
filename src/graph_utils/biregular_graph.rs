@@ -26,8 +26,18 @@ pub struct BiregularGraph {
 }
 
 impl BiregularGraph {
+    /// Generates nonisomorphic biregular graphs with and without parallel edges.
+    pub fn generate_all(graph_size: usize, degree_a: usize, degree_b: usize) -> Vec<Self> {
+        let mut result = BiregularGraph::generate_simple(graph_size, degree_a, degree_b);
+        let mut other = BiregularGraph::generate_multigraph(
+            graph_size, degree_a, degree_b,
+        );
+        result.append(&mut other);
+        result
+    }
+
     /// Generates simple nonisomorphic biregular graphs.
-    pub fn generate(graph_size: usize, degree_a: usize, degree_b: usize) -> Vec<Self> {
+    pub fn generate_simple(graph_size: usize, degree_a: usize, degree_b: usize) -> Vec<Self> {
         let now = Instant::now();
         let (partition_sizes, graphs_string): (Vec<(usize, usize)>, Vec<String>) =
             generate_biregular_graphs_unzipped_graph8(graph_size, degree_a, degree_b);
@@ -87,7 +97,7 @@ impl BiregularGraph {
 
     /// Generates nonisomorphic biregular graphs with parallel edges.
     ///
-    /// Graphs with no parallel edges are not included. To generate them, use `generate`.
+    /// Graphs without parallel edges are not included. To generate them, use `generate`.
     pub fn generate_multigraph(graph_size: usize, degree_a: usize, degree_b: usize) -> Vec<Self> {
         let max_degree = std::cmp::max(degree_a, degree_b);
         let max_edge_multiplicity = max_degree;
@@ -146,13 +156,13 @@ mod tests {
 
     #[test]
     fn test_generating_biregular_graphs() {
-        assert_eq!(BiregularGraph::generate(5, 3, 2).len(), 1);
-        assert_eq!(BiregularGraph::generate(5, 2, 3).len(), 1);
-        assert_eq!(BiregularGraph::generate(7, 2, 3).len(), 0);
-        assert_eq!(BiregularGraph::generate(7, 3, 2).len(), 0);
-        assert_eq!(BiregularGraph::generate(8, 5, 3).len(), 1);
-        assert_eq!(BiregularGraph::generate(8, 3, 5).len(), 1);
-        assert_eq!(BiregularGraph::generate(8, 3, 3).len(), 1);
+        assert_eq!(BiregularGraph::generate_simple(5, 3, 2).len(), 1);
+        assert_eq!(BiregularGraph::generate_simple(5, 2, 3).len(), 1);
+        assert_eq!(BiregularGraph::generate_simple(7, 2, 3).len(), 0);
+        assert_eq!(BiregularGraph::generate_simple(7, 3, 2).len(), 0);
+        assert_eq!(BiregularGraph::generate_simple(8, 5, 3).len(), 1);
+        assert_eq!(BiregularGraph::generate_simple(8, 3, 5).len(), 1);
+        assert_eq!(BiregularGraph::generate_simple(8, 3, 3).len(), 1);
     }
 
     #[test]
@@ -165,7 +175,7 @@ mod tests {
 
     #[test]
     fn test_biregular_graph_partitions_have_correct_degrees() {
-        let graphs = BiregularGraph::generate(5, 3, 2);
+        let graphs = BiregularGraph::generate_simple(5, 3, 2);
 
         for graph in graphs {
             assert_eq!(graph.degree_a, 3);
