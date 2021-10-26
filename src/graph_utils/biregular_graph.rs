@@ -26,16 +26,6 @@ pub struct BiregularGraph {
 }
 
 impl BiregularGraph {
-    /// Generates nonisomorphic biregular graphs with and without parallel edges.
-    pub fn generate_all(graph_size: usize, degree_a: usize, degree_b: usize) -> Vec<Self> {
-        let mut result = BiregularGraph::generate_simple(graph_size, degree_a, degree_b);
-        let mut other = BiregularGraph::generate_multigraph(
-            graph_size, degree_a, degree_b,
-        );
-        result.append(&mut other);
-        result
-    }
-
     /// Generates simple nonisomorphic biregular graphs.
     pub fn generate_simple(graph_size: usize, degree_a: usize, degree_b: usize) -> Vec<Self> {
         let now = Instant::now();
@@ -97,7 +87,7 @@ impl BiregularGraph {
 
     /// Generates nonisomorphic biregular graphs with parallel edges.
     ///
-    /// Graphs without parallel edges are not included. To generate them, use `generate`.
+    /// Simple graphs are also included in this generators result.
     pub fn generate_multigraph(graph_size: usize, degree_a: usize, degree_b: usize) -> Vec<Self> {
         let max_degree = std::cmp::max(degree_a, degree_b);
         let max_edge_multiplicity = max_degree;
@@ -109,7 +99,7 @@ impl BiregularGraph {
                     n1, n2, 1, 1, degree_a, degree_b,
                 );
             let path = "/tmp/thesis-tool-graphs"; // TODO change to use some other method than save graphs in a file.
-            std::fs::write(path, underlying_simple_bipartite_graphs).unwrap();
+            std::fs::write(path, &underlying_simple_bipartite_graphs).unwrap();
             let edges = n1 * degree_a;
             let mg = extend_to_multigraphs(path, max_edge_multiplicity, edges, max_degree);
             multigraphs.push(((n1, n2), mg));
@@ -187,6 +177,45 @@ mod tests {
             for node in graph.partition_b {
                 assert_eq!(graph.graph.neighbors(node).count(), 2)
             }
+        }
+    }
+
+    /// The idea is from: https://github.com/petgraph/petgraph/issues/199#issuecomment-484077775
+    fn graph_eq<N, E, Ty, Ix>(
+        a: &petgraph::Graph<N, E, Ty, Ix>,
+        b: &petgraph::Graph<N, E, Ty, Ix>,
+    ) -> bool
+    where
+        N: PartialEq,
+        E: PartialEq,
+        Ty: petgraph::EdgeType,
+        Ix: petgraph::graph::IndexType + PartialEq,
+    {
+        let get_edges = |g: &petgraph::Graph<N, E, Ty, Ix>| {
+            g.raw_edges()
+                .iter()
+                .map(|e| {
+                    let mut v = [e.source(), e.target()];
+                    v.sort();
+                    let [v1, v2] = v;
+                    (v1, v2)
+                })
+                .collect_vec()
+        };
+        get_edges(&a).eq(&get_edges(&b))
+    }
+
+    #[test]
+    fn test_multigraph_gen_includes_all_simple_graphs() {
+        let graph_size = 5;
+        let degree_a = 2;
+        let degree_b = 3;
+
+        let simple_graphs = BiregularGraph::generate_simple(graph_size, degree_a, degree_b);
+        let multigraphs = BiregularGraph::generate_multigraph(graph_size, degree_a, degree_b);
+
+        for sg in simple_graphs.iter() {
+            assert!(multigraphs.iter().any(|mg| graph_eq(&sg.graph, &mg.graph)))
         }
     }
 }
