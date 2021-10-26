@@ -20,7 +20,7 @@ impl SatSolver {
     /// Solves SAT problem using PicoSAT.
     ///
     /// Returns enumerator [`SatResult`] stating the solver's result.
-    pub fn solve(clauses: Clauses) -> SatResult {
+    pub fn solve(clauses: &Clauses) -> SatResult {
         let mut psat = picosat::init();
 
         for c in clauses.iter() {
@@ -50,7 +50,7 @@ mod tests {
     fn test_solver_returns_satisfiable() {
         // Simple CNF satisfiability problem that is satisfiable.
         let clauses = vec![vec![1, -2, 3, 4]];
-        let result = SatSolver::solve(clauses);
+        let result = SatSolver::solve(&clauses);
         assert_eq!(result, SatResult::Satisfiable);
     }
 
@@ -58,7 +58,7 @@ mod tests {
     fn test_solver_returns_unsatisfiable() {
         // Simple CNF satisfiability problem that is unsatisfiable.
         let clauses = vec![vec![1], vec![-1]];
-        let result = SatSolver::solve(clauses);
+        let result = SatSolver::solve(&clauses);
         assert_eq!(result, SatResult::Unsatisfiable);
     }
 }
