@@ -11,7 +11,7 @@ use std::{fs::File, process::Command, process::Stdio};
 pub use biregular_graph::BiregularGraph;
 pub use dot_format::DotFormat;
 
-type UndirectedGraph = Graph<u32, (), Undirected>;
+pub type UndirectedGraph = Graph<u32, (), Undirected>;
 
 fn graph6_to_petgraph(graph: &str) -> UndirectedGraph {
     let adjacency_matrix = string_to_adjacency_matrix(graph);
