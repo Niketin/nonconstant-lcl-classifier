@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::time::Instant;
 
 use super::{
@@ -7,7 +8,7 @@ use super::{
 };
 use super::{generate_biregular_graphs_unzipped_graph8, get_partitions, graph6_to_petgraph};
 use itertools::Itertools;
-use log::debug;
+use log::{debug, info};
 use petgraph::graph::NodeIndex;
 
 /// Container for biregular graph.
@@ -87,21 +88,46 @@ impl BiregularGraph {
 
     /// Generates nonisomorphic biregular graphs with parallel edges.
     ///
+    /// Immediate results are cached into filesystem.
+    /// The immediate results are the underlying bipartite graphs before extending them to multigraphs.
+    ///
     /// Simple graphs are also included in this generators result.
+    /// TODO rethink caching and which graph generator functions really need them.
+    /// TODO Might bee wasteful to use it with "generate_bipartite_graphs_with_degree_bounds_graph8".
     pub fn generate_multigraph(graph_size: usize, degree_a: usize, degree_b: usize) -> Vec<Self> {
         let max_degree = std::cmp::max(degree_a, degree_b);
         let max_edge_multiplicity = max_degree;
 
         let mut multigraphs = Vec::new();
         for (n1, n2) in biregular_partition_sizes(graph_size, degree_a, degree_b) {
-            let underlying_simple_bipartite_graphs =
-                generate_bipartite_graphs_with_degree_bounds_graph8(
-                    n1, n2, 1, 1, degree_a, degree_b,
-                );
-            let path = "/tmp/thesis-tool-graphs"; // TODO change to use some other method than save graphs in a file.
-            std::fs::write(path, &underlying_simple_bipartite_graphs).unwrap();
+            let path_to_graphs_in_cache =
+                BiregularGraph::path_to_bipartite_graphs_cache(n1, n2, 1, 1, degree_a, degree_b);
+
+            if !path_to_graphs_in_cache.exists() {
+                BiregularGraph::set_bipartite_graphs_to_cache(
+                    &path_to_graphs_in_cache,
+                    n1,
+                    n2,
+                    1,
+                    1,
+                    degree_a,
+                    degree_b,
+                )
+                .expect("Generating graphs to cache failed.");
+            } else {
+                debug!(
+                    "Found bipartite graph from cache! n1: {}, n2: {}, d1=[1...{}], d2=[1...{}]",
+                    n1, n2, degree_a, degree_b
+                )
+            }
+
             let edges = n1 * degree_a;
-            let mg = extend_to_multigraphs(path, max_edge_multiplicity, edges, max_degree);
+            let mg = extend_to_multigraphs(
+                &path_to_graphs_in_cache,
+                max_edge_multiplicity,
+                edges,
+                max_degree,
+            );
             multigraphs.push(((n1, n2), mg));
         }
 
@@ -137,6 +163,49 @@ impl BiregularGraph {
             })
             .collect_vec();
         multigraphs_biregulargraph
+    }
+
+    fn path_to_bipartite_graphs_cache(
+        n1: usize,
+        n2: usize,
+        d1_low: usize,
+        d2_low: usize,
+        d1_high: usize,
+        d2_high: usize,
+    ) -> PathBuf {
+        let graph_cache_directory = "thesis_tool_graph_cache";
+        let mut path = dirs::home_dir().expect("User is expected to have a home directory.");
+
+        path.push(graph_cache_directory);
+
+        let graph_size_class = format!("{}_{}", n1, n2);
+        path.push(graph_size_class);
+
+        let file_name = format!("{}_{}_{}_{}", d1_low, d2_low, d1_high, d2_high);
+        path.push(file_name);
+        path.set_extension("dat");
+
+        path
+    }
+
+    fn set_bipartite_graphs_to_cache(
+        path: &PathBuf,
+        n1: usize,
+        n2: usize,
+        d1_low: usize,
+        d2_low: usize,
+        d1_high: usize,
+        d2_high: usize,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let graphs = generate_bipartite_graphs_with_degree_bounds_graph8(
+            n1, n2, d1_low, d2_low, d1_high, d2_high,
+        );
+        let mut dir = path.clone();
+        dir.pop();
+        std::fs::create_dir_all(dir)?;
+        std::fs::write(path, &graphs)?;
+
+        Ok(())
     }
 }
 
