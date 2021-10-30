@@ -9,6 +9,7 @@ pub trait DotFormat {
     fn get_dot(&self) -> String;
 }
 
+/// Implement DotFormat for undirected graphs.
 impl<N, E> DotFormat for Graph<N, E, Undirected>
 where
     E: Debug,
