@@ -6,6 +6,7 @@ use itertools::Itertools;
 
 use petgraph::{graph::NodeIndex, Graph, Undirected};
 use std::io::prelude::*;
+use std::path::PathBuf;
 use std::{fs::File, process::Command, process::Stdio};
 
 pub use biregular_graph::BiregularGraph;
@@ -154,7 +155,7 @@ fn get_partitions(
 }
 
 fn extend_to_multigraphs(
-    input_path: &str,
+    input_path: &PathBuf,
     max_edge_multiplicity: usize,
     edges: usize,
     max_degree: usize,
