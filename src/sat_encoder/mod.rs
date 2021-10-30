@@ -1,4 +1,3 @@
-
 use crate::lcl_problem::LclProblem;
 use crate::BiregularGraph;
 use itertools::Itertools;
@@ -15,6 +14,7 @@ pub type Permutations = Vec<Vec<u8>>;
 ///
 /// `SatEncoder` can be used to encode LCL problems and biregular graphs into CNF DIMACS format.
 /// This encoded form can be used as input to most SAT solvers.
+/// Solving this encoded form tells if we can find a valid labelings for the graph.
 ///
 /// More about SAT [here](https://en.wikipedia.org/wiki/Boolean_satisfiability_problem).
 pub struct SatEncoder {
@@ -48,6 +48,7 @@ impl SatEncoder {
         }
     }
 
+    /// Returns a reference of the inner graph.
     pub fn get_graph(&self) -> &BiregularGraph {
         &self.graph
     }
@@ -327,6 +328,10 @@ impl SatEncoder {
         unreachable!();
     }
 
+    /// Prints clauses in a human-readable format.
+    ///
+    /// `clauses` must be from the same instance of SatEncoder
+    /// because the information of graph and LCL problem is needed for this.
     pub fn print_clauses(&self, clauses: &Clauses) {
         clauses
             .iter()
