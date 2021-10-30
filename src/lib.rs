@@ -72,15 +72,22 @@ mod tests {
         let deg_a = lcl_problem.active.get_labels_per_configuration();
         let deg_p = lcl_problem.passive.get_labels_per_configuration();
 
-        let graphs_grouped = (n_min..=n_max).map(|n| BiregularGraph::generate_multigraph(n, deg_a, deg_p));
+        let graphs_grouped =
+            (n_min..=n_max).map(|n| BiregularGraph::generate_multigraph(n, deg_a, deg_p));
 
-        let results_grouped = graphs_grouped.into_iter().map(|graphs| {
-            graphs.into_iter().map(|graph|{
-                let sat_encoder = SatEncoder::new(lcl_problem.clone(), graph);
-                let clauses = sat_encoder.encode();
-                SatSolver::solve(&clauses)
-            }).collect_vec()
-        }).collect_vec();
+        let results_grouped = graphs_grouped
+            .into_iter()
+            .map(|graphs| {
+                graphs
+                    .into_iter()
+                    .map(|graph| {
+                        let sat_encoder = SatEncoder::new(lcl_problem.clone(), graph);
+                        let clauses = sat_encoder.encode();
+                        SatSolver::solve(&clauses)
+                    })
+                    .collect_vec()
+            })
+            .collect_vec();
 
         // For n=(1..=9) all results should be satisfiable.
         let (last, rest) = results_grouped.as_slice().split_last().unwrap();
@@ -108,17 +115,20 @@ mod tests {
 
         assert!(!graphs.is_empty());
 
-        let results = graphs.into_iter().map(|graph| {
-            let sat_encoder = SatEncoder::new(lcl_problem.clone(), graph);
-            let clauses = sat_encoder.encode();
-            sat_encoder.print_clauses(&clauses);
-            SatSolver::solve(&clauses)
-        }).collect_vec();
+        let results = graphs
+            .into_iter()
+            .map(|graph| {
+                let sat_encoder = SatEncoder::new(lcl_problem.clone(), graph);
+                let clauses = sat_encoder.encode();
+                sat_encoder.print_clauses(&clauses);
+                SatSolver::solve(&clauses)
+            })
+            .collect_vec();
 
-        assert!(results.iter().all(|result| { *result == SatResult::Satisfiable }));
+        assert!(results
+            .iter()
+            .all(|result| { *result == SatResult::Satisfiable }));
 
         Ok(())
     }
-
-
 }
