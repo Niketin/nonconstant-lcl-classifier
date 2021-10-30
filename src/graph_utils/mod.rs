@@ -20,7 +20,7 @@ fn graph6_to_petgraph(graph: &str) -> UndirectedGraph {
     petgraph::graph::UnGraph::from_edges(&edges)
 }
 
-/// Writes dot graph into svg file.
+/// Writes dot formatted graph into svg file.
 pub fn save_as_svg(path: &str, dot: &str) -> Result<(), Box<dyn std::error::Error>> {
     let process = Command::new("dot")
         .arg("-Tsvg")
@@ -117,10 +117,16 @@ fn generate_biregular_graphs_unzipped_graph8(
         .unzip()
 }
 
+/// Returns all positive integer pairs that sum up to `sum`.
+///
+/// First integer is always smaller or equal with the second.
 fn pairs_with_sum(sum: usize) -> Vec<(usize, usize)> {
     (1..=(sum / 2)).map(|i| (i, sum - i)).collect_vec()
 }
 
+/// Returns all possible partition sizes of a biregular graph.
+///
+/// To be more exact, the graph is (`d1`, `d2`)-biregular graph of size `n`.
 fn biregular_partition_sizes(n: usize, d1: usize, d2: usize) -> Vec<(usize, usize)> {
     pairs_with_sum(n)
         .iter()
@@ -154,6 +160,7 @@ fn get_partitions(
     (node_indices_a, node_indices_p)
 }
 
+/// Extends given underlying graphs to all possible multigraphs.
 fn extend_to_multigraphs(
     input_path: &PathBuf,
     max_edge_multiplicity: usize,
@@ -215,7 +222,6 @@ fn partition_is_regular(graph: &UndirectedGraph, partition: &Vec<NodeIndex>) -> 
         .collect_vec();
     degrees.windows(2).all(|window| window[0] == window[1])
 }
-
 
 #[cfg(test)]
 mod tests {
