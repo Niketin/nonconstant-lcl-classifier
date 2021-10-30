@@ -64,7 +64,8 @@ mod tests {
 
     #[test]
     fn test_lcl_on_n10_graphs_unsatisfiable() -> Result<(), Box<dyn std::error::Error>> {
-        let n = 10;
+        let n_min = 1;
+        let n_max = 10;
 
         let a = "M U U\nP P P";
         let p = "M M\nP U\nU U";
@@ -72,18 +73,24 @@ mod tests {
         let deg_a = lcl_problem.active.get_labels_per_configuration();
         let deg_p = lcl_problem.passive.get_labels_per_configuration();
 
-        let graphs = BiregularGraph::generate_multigraph(n, deg_a, deg_p);
+        let graphs_grouped = (n_min..=n_max).map(|n| BiregularGraph::generate_multigraph(n, deg_a, deg_p));
 
-        assert!(!graphs.is_empty());
+        let results_grouped = graphs_grouped.into_iter().map(|graphs| {
+            graphs.into_iter().map(|graph|{
+                let sat_encoder = SatEncoder::new(lcl_problem.clone(), graph);
+                let clauses = sat_encoder.encode();
+                SatSolver::solve(&clauses)
+            }).collect_vec()
+        }).collect_vec();
 
-        let mut results = graphs.into_iter().map(|graph| {
-            let sat_encoder = SatEncoder::new(lcl_problem.clone(), graph);
-            let clauses = sat_encoder.encode();
-            SatSolver::solve(&clauses)
-        });
+        // For n=(1..=9) all results should be satisfiable.
+        let (last, rest) = results_grouped.as_slice().split_last().unwrap();
+        for results in rest {
+            assert!(results.iter().all(|r| *r == SatResult::Satisfiable));
+        }
 
-        // At least one result is unsatisfiable.
-        assert!(results.any(|result| { result == SatResult::Unsatisfiable }));
+        // For n=10 at least one results should be unsatisfiable.
+        assert!(last.iter().any(|r| *r == SatResult::Unsatisfiable));
 
         Ok(())
     }
