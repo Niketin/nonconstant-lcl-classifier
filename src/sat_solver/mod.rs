@@ -23,8 +23,8 @@ impl SatSolver {
     pub fn solve(clauses: &Clauses) -> SatResult {
         let mut psat = picosat::init();
 
-        for c in clauses.iter() {
-            for var in c.iter() {
+        for clause in clauses.iter() {
+            for var in clause.iter() {
                 picosat::add(&mut psat, *var);
             }
             picosat::add(&mut psat, 0);

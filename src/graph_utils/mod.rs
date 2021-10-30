@@ -191,8 +191,8 @@ fn multigraph_string_to_petgraph(
 
         let mut values = words.map(|word| word.parse::<u32>());
 
-        let _number_of_vertices = values.next().ok_or("TODO")??;
-        let number_of_edges = values.next().ok_or("TODO")??;
+        let _number_of_vertices = values.next().ok_or("Invalid format of multigraph.")??;
+        let number_of_edges = values.next().ok_or("Invalid format of multigraph.")??;
 
         if number_of_edges == 0 {
             continue;
