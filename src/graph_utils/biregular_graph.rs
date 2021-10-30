@@ -8,7 +8,7 @@ use super::{
 };
 use super::{generate_biregular_graphs_unzipped_graph8, get_partitions, graph6_to_petgraph};
 use itertools::Itertools;
-use log::{debug, info};
+use log::debug;
 use petgraph::graph::NodeIndex;
 
 /// Container for biregular graph.
