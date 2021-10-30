@@ -105,6 +105,17 @@ fn generate_biregular_graphs_with_total_size_graph8(
     graphs
 }
 
+fn generate_biregular_graphs_unzipped_graph8(
+    graph_size: usize,
+    degree_a: usize,
+    degree_b: usize,
+) -> (Vec<(usize, usize)>, Vec<String>) {
+    generate_biregular_graphs_with_total_size_graph8(graph_size, degree_a, degree_b)
+        .iter()
+        .cloned()
+        .unzip()
+}
+
 fn pairs_with_sum(sum: usize) -> Vec<(usize, usize)> {
     (1..=(sum / 2)).map(|i| (i, sum - i)).collect_vec()
 }
@@ -204,16 +215,6 @@ fn partition_is_regular(graph: &UndirectedGraph, partition: &Vec<NodeIndex>) -> 
     degrees.windows(2).all(|window| window[0] == window[1])
 }
 
-fn generate_biregular_graphs_unzipped_graph8(
-    graph_size: usize,
-    degree_a: usize,
-    degree_b: usize,
-) -> (Vec<(usize, usize)>, Vec<String>) {
-    generate_biregular_graphs_with_total_size_graph8(graph_size, degree_a, degree_b)
-        .iter()
-        .cloned()
-        .unzip()
-}
 
 #[cfg(test)]
 mod tests {
