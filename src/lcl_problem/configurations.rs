@@ -1,4 +1,4 @@
-use std::{collections::HashMap, error::Error};
+use std::{cmp::Ordering, collections::HashMap, error::Error};
 
 use itertools::Itertools;
 
@@ -9,11 +9,9 @@ use itertools::Itertools;
 ///
 /// Contained configurations can be accessed with different methods.
 /// It is also possible to access all unique permutations of each configuration with [`Configurations::get_permutations`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, Ord, Hash)]
 pub struct Configurations {
-    data: Vec<u8>,
-    labels_per_configuration: usize,
-    configuration_count: usize,
+    data: Vec<Vec<u8>>,
 }
 
 impl Configurations {
@@ -32,9 +30,9 @@ impl Configurations {
     /// use std::collections::HashMap;
     /// # use thesis_tool_lib::Configurations;
     /// let mut symbol_map = HashMap::<String, u8>::new();
-    /// let configurations = Configurations::new("A B C\nA A B\nC C C", &mut symbol_map).unwrap();
+    /// let configurations = Configurations::from_string("A B C\nA A B\nC C C", &mut symbol_map).unwrap();
     /// ```
-    pub fn new(
+    pub fn from_string(
         encoding: &str,
         symbol_map: &mut HashMap<String, u8>,
     ) -> Result<Self, Box<dyn Error>> {
@@ -45,8 +43,9 @@ impl Configurations {
         let all_same_length = lines.all(|ref l| l.split_ascii_whitespace().count() == width);
         assert!(all_same_length);
 
-        let mut v = Vec::<u8>::new();
+        let mut v = vec![];
         for line in encoding.lines() {
+            let mut configuration = Vec::<u8>::new();
             for symbol in line.split_ascii_whitespace() {
                 let value = if symbol_map.contains_key(symbol) {
                     symbol_map.get(symbol).unwrap().clone()
@@ -56,40 +55,43 @@ impl Configurations {
                     new_value
                 };
 
-                v.push(value)
+                configuration.push(value)
             }
+            v.push(configuration);
         }
 
-        let height = encoding.lines().count();
+        Ok(Configurations { data: v })
+    }
+
+    pub fn from_configuration_data(
+        configuration_data: Vec<Vec<u8>>,
+    ) -> Result<Self, Box<dyn Error>> {
+        assert!(!configuration_data.is_empty());
+        assert!(!configuration_data[0].is_empty());
+
+        let width = configuration_data[0].len();
+        let all_same_length = configuration_data.iter().all(|l| l.len() == width);
+        assert!(all_same_length);
 
         Ok(Configurations {
-            data: v,
-            labels_per_configuration: width,
-            configuration_count: height,
+            data: configuration_data,
         })
     }
 
     /// Returns the count of labels in a configuration.
     pub fn get_labels_per_configuration(&self) -> usize {
-        self.labels_per_configuration
+        self.data[0].len()
     }
 
     /// Returns the count of labels in a configuration.
     pub fn get_configuration_count(&self) -> usize {
-        self.configuration_count
+        self.data.len()
     }
 
     /// Returns configurations at `index`.
     pub fn get_configuration(&self, index: usize) -> &[u8] {
-        assert!(index < self.configuration_count);
-        let begin = self.labels_per_configuration * index;
-        let end = begin + self.labels_per_configuration;
-        &self.data[begin..end]
-    }
-
-    /// Returns configurations as chunks of labels.
-    pub fn get_configurations_chunks(&self) -> itertools::IntoChunks<std::slice::Iter<u8>> {
-        self.data.iter().chunks(self.labels_per_configuration)
+        assert!(index < self.get_configuration_count());
+        &self.data[index]
     }
 
     /// Returns all unique permutations of labels, in each configuration.
@@ -119,7 +121,7 @@ impl Configurations {
     /// use std::collections::HashMap;
     /// # use thesis_tool_lib::Configurations;
     /// let mut symbol_map = HashMap::<String, u8>::new();
-    /// let configurations = Configurations::new("A B C", &mut symbol_map).unwrap();
+    /// let configurations = Configurations::from_string("A B C", &mut symbol_map).unwrap();
     /// let permutations = configurations.get_permutations();
     /// let correct = vec![
     ///     vec![0, 1, 2],
@@ -131,14 +133,113 @@ impl Configurations {
     /// assert_eq!(permutations, correct);
     /// ```
     pub fn get_permutations(&self) -> Vec<Vec<u8>> {
-        let configurations_chunks = self.get_configurations_chunks();
-        let configurations_vec = configurations_chunks.into_iter().map(|x| x.collect_vec());
-        configurations_vec
+        self.data
+            .iter()
             .map(|x| {
                 let k = x.len();
-                x.iter().map(|x| **x).permutations(k).unique().collect_vec()
+                x.iter().map(|x| *x).permutations(k).unique().collect_vec()
             })
             .flatten()
             .collect_vec()
+    }
+
+    pub fn map_symbols(&self, permutation: &Vec<u8>) -> Configurations {
+        assert!(!permutation.is_empty());
+        let data = self
+            .data
+            .iter()
+            .map(|configuration| {
+                configuration
+                    .iter()
+                    .map(|label| permutation[*label as usize])
+                    .collect_vec()
+            })
+            .collect_vec();
+        Configurations { data, ..*self }
+    }
+
+    pub fn sort(&mut self) {
+        self.sort_labels_inside_configuration();
+        self.sort_configurations();
+    }
+
+    fn sort_configurations(&mut self) {
+        self.data.sort();
+    }
+
+    fn sort_labels_inside_configuration(&mut self) {
+        self.data.iter_mut().for_each(|c| c.sort());
+    }
+
+    pub fn get_symbols(&self) -> Vec<u8> {
+        self.data.iter().flatten().copied().unique().collect_vec()
+    }
+}
+
+impl PartialEq for Configurations {
+    fn eq(&self, other: &Self) -> bool {
+        self.data == other.data
+    }
+}
+
+impl PartialOrd for Configurations {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.data.partial_cmp(&other.data)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_eq() {
+        let mut symbol_map = HashMap::new();
+        symbol_map.insert("A".to_string(), 0u8);
+        symbol_map.insert("B".to_string(), 1u8);
+        symbol_map.insert("C".to_string(), 2u8);
+
+        let c0 = Configurations::from_string("A B B\nC C C", &mut symbol_map).unwrap();
+        let c1 = Configurations::from_string("A B\nB C\nC C", &mut symbol_map).unwrap();
+        let c2 = Configurations::from_string("A B\nB C\nC C", &mut symbol_map).unwrap();
+
+        assert_ne!(c0, c1);
+        assert_eq!(c1, c2);
+    }
+
+    #[test]
+    fn test_sort() {
+        let mut symbol_map = HashMap::new();
+        symbol_map.insert("M".to_string(), 0u8);
+        symbol_map.insert("U".to_string(), 1u8);
+        symbol_map.insert("P".to_string(), 2u8);
+
+        let mut c0 = Configurations::from_string("M U U\nP P P", &mut symbol_map).unwrap();
+        let mut c1 = Configurations::from_string("U M U\nP P P", &mut symbol_map).unwrap();
+        let mut c2 = Configurations::from_string("P P P\nU U M", &mut symbol_map).unwrap();
+        let mut c3 = Configurations::from_string("M P P\nU U M", &mut symbol_map).unwrap();
+
+        // Different configurations at first.
+        assert_ne!(c0, c1);
+        assert_ne!(c0, c2);
+        assert_ne!(c1, c2);
+        assert_ne!(c3, c0);
+        assert_ne!(c3, c1);
+        assert_ne!(c3, c2);
+
+        // Sort all.
+        c0.sort();
+        c1.sort();
+        c2.sort();
+        c3.sort();
+
+        // After sorting these are same.
+        assert_eq!(c0, c1);
+        assert_eq!(c1, c2);
+
+        // After sorting these are still different.
+        assert_ne!(c3, c0);
+        assert_ne!(c3, c1);
+        assert_ne!(c3, c2);
     }
 }
