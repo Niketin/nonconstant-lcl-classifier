@@ -1,4 +1,9 @@
-use std::{cmp::Ordering, collections::HashMap, error::Error};
+use std::{
+    cmp::Ordering,
+    collections::{HashMap, HashSet},
+    error::Error,
+    iter::FromIterator,
+};
 
 use itertools::Itertools;
 
@@ -94,6 +99,16 @@ impl Configurations {
         &self.data[index]
     }
 
+    /// Returns reference to configurations.
+    pub fn get_configurations(&self) -> &Vec<Vec<u8>> {
+        &self.data
+    }
+
+    /// Returns mutable reference to configurations.
+    pub fn get_configuration_mut(&mut self) -> &mut Vec<Vec<u8>> {
+        &mut self.data
+    }
+
     /// Returns all unique permutations of labels, in each configuration.
     ///
     /// # Example
@@ -173,6 +188,21 @@ impl Configurations {
 
     pub fn get_symbols(&self) -> Vec<u8> {
         self.data.iter().flatten().copied().unique().collect_vec()
+    }
+
+    pub fn get_symbols_set(&self) -> HashSet<u8> {
+        HashSet::from_iter(self.data.iter().flatten().copied())
+    }
+
+    pub fn remove_configurations_containing_symbol(&mut self, symbols: &[u8]) {
+        self.data.retain(|configuration| {
+            for symbol in symbols {
+                if configuration.contains(symbol) {
+                    return false;
+                }
+            }
+            true
+        });
     }
 }
 
