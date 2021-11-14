@@ -14,12 +14,10 @@ use std::{
 /// Locally Checkable Labeling problem for biregular graphs.
 ///
 /// Contains configurations for active nodes and passive nodes.
-/// Also contains a symbol map that is used in both configurations' initialization.
 #[derive(Debug, Clone, Eq)]
 pub struct LclProblem {
     pub active: Configurations,
     pub passive: Configurations,
-    pub symbol_map: HashMap<String, u8>,
 }
 
 impl Hash for LclProblem {
@@ -31,24 +29,15 @@ impl Hash for LclProblem {
 
 impl LclProblem {
     pub fn new(a: &str, p: &str) -> Result<LclProblem, Box<dyn std::error::Error>> {
-        let mut symbol_map: HashMap<String, u8> = HashMap::new();
+        let mut label_map: HashMap<String, u8> = HashMap::new();
         Ok(LclProblem {
-            active: Configurations::from_string(a, &mut symbol_map)?,
-            passive: Configurations::from_string(p, &mut symbol_map)?,
-            symbol_map,
+            active: Configurations::from_string(a, &mut label_map)?,
+            passive: Configurations::from_string(p, &mut label_map)?,
         })
     }
 
-    fn from_configurations(
-        a: Vec<Vec<u8>>,
-        p: Vec<Vec<u8>>,
-    ) -> Result<LclProblem, Box<dyn std::error::Error>> {
-        let symbol_map: HashMap<String, u8> = HashMap::new();
-        Ok(LclProblem {
-            active: Configurations::from_configuration_data(a)?,
-            passive: Configurations::from_configuration_data(p)?,
-            symbol_map,
-        })
+    fn from_configurations(active: Configurations, passive: Configurations) -> Self {
+        Self { active, passive }
     }
 
     /// Checks if either active or passive partition is empty.
@@ -58,32 +47,32 @@ impl LclProblem {
 
     /// Adapted from https://github.com/AleksTeresh/lcl-classifier/blob/be5d0196b02dad33ee19657af6b16457f59780e9/src/server/problem/problem.py#L378
     fn purge(&mut self) {
-        let mut active_symbols = self.active.get_symbols_set();
-        let mut passive_symbols = self.passive.get_symbols_set();
+        let mut active_labels = self.active.get_labels_set();
+        let mut passive_labels = self.passive.get_labels_set();
 
-        while active_symbols
-            .symmetric_difference(&passive_symbols)
+        while active_labels
+            .symmetric_difference(&passive_labels)
             .next()
             .is_some()
         {
-            let diff = active_symbols
-                .difference(&passive_symbols)
+            let diff = active_labels
+                .difference(&passive_labels)
                 .copied()
                 .collect_vec();
             if !diff.is_empty() {
-                self.active.remove_configurations_containing_symbol(&diff);
+                self.active.remove_configurations_containing_label(&diff);
             }
 
-            let diff = passive_symbols
-                .difference(&active_symbols)
+            let diff = passive_labels
+                .difference(&active_labels)
                 .copied()
                 .collect_vec();
             if !diff.is_empty() {
-                self.passive.remove_configurations_containing_symbol(&diff);
+                self.passive.remove_configurations_containing_label(&diff);
             }
 
-            active_symbols = self.active.get_symbols_set();
-            passive_symbols = self.passive.get_symbols_set();
+            active_labels = self.active.get_labels_set();
+            passive_labels = self.passive.get_labels_set();
         }
     }
 
@@ -110,19 +99,17 @@ impl LclProblem {
     ///
     /// Uses `Self::purge` for each generated problem and
     /// removes problems with empty partition from the result.
-    pub fn generate(active_degree: usize, passive_degree: usize, label_count: u8) -> Vec<Self> {
-        let labels = (0..label_count).collect_vec();
+    pub fn generate(active_degree: usize, passive_degree: usize, alphabet_length: u8) -> Vec<Self> {
         let generated_collections_of_active_configurations =
-            Self::generate_all(active_degree, &labels);
+            Configurations::generate_all(active_degree, alphabet_length);
         let generated_collections_of_passive_configurations =
-            Self::generate_all(passive_degree, &labels);
+            Configurations::generate_all(passive_degree, alphabet_length);
 
         generated_collections_of_active_configurations
             .iter()
             .cartesian_product(generated_collections_of_passive_configurations.iter())
             .filter_map(|(active, passive)| {
-                let mut problem =
-                    LclProblem::from_configurations(active.clone(), passive.clone()).unwrap();
+                let mut problem = LclProblem::from_configurations(active.clone(), passive.clone());
                 problem.purge();
                 if !problem.contains_empty_partition() {
                     return Some(problem);
@@ -148,56 +135,33 @@ impl LclProblem {
     }
 
     fn get_all_permutations(&self) -> Vec<(Configurations, Configurations)> {
-        let symbol_max = self
+        let label_max = self
             .active
-            .get_symbols()
+            .get_labels()
             .into_iter()
-            .chain(self.passive.get_symbols().into_iter())
+            .chain(self.passive.get_labels().into_iter())
             .max()
             .unwrap();
-        let symbols = 0..=symbol_max;
+        let labels = 0..=label_max;
 
-        let permutations = symbols.permutations(symbol_max as usize + 1).collect_vec();
+        let permutations = labels.permutations(label_max as usize + 1).collect_vec();
 
         let a = permutations.into_iter().map(|perm| {
             assert!(!perm.is_empty());
-            let active = self.active.map_symbols(&perm);
-            let passive = self.passive.map_symbols(&perm);
+            let active = self.active.map_labels(&perm);
+            let passive = self.passive.map_labels(&perm);
             return (active, passive);
         });
 
         return a.collect_vec();
     }
 
-    fn generate_all(degree: usize, labels: &Vec<u8>) -> Vec<Vec<Vec<u8>>> {
-        let configurations = Self::gen_configurations(degree, &labels);
-
-        let iterator = (1..=configurations.len())
-            .flat_map(|max_configurations| {
-                configurations
-                    .iter()
-                    .cloned()
-                    .combinations(max_configurations)
-            })
-            .collect_vec();
-
-        return iterator;
-    }
-
-    fn gen_configurations(degree: usize, labels: &Vec<u8>) -> Vec<Vec<u8>> {
-        labels
-            .iter()
-            .cloned()
-            .combinations_with_replacement(degree)
-            .collect_vec()
-    }
-
     /// Writes problems to a file and removes old content.
     ///
     /// Creates the file if it does not exist in `path`.
     /// Problems are separeted with newline.
-    /// Supports up to 7 different symbols.
-    /// The symbols are the 7 first letters in the alphabet.
+    /// Supports up to 7 different labels.
+    /// The labels are the 7 first letters in the alphabet.
     ///
     /// An example of a problem:
     /// ```['AAB', 'AAC']; ['AB', 'AC] ```
@@ -207,7 +171,7 @@ impl LclProblem {
     ) -> Result<(), Box<dyn std::error::Error>> {
         let mut file = File::create(path)?;
 
-        let symbols = "ABCDEFG";
+        let labels = "ABCDEFG";
 
         problems.iter().for_each(|ref problem| {
             let asd = [&problem.active, &problem.passive]
@@ -220,7 +184,7 @@ impl LclProblem {
                             .map(|configuration| {
                                 let c = configuration
                                     .iter()
-                                    .map(|&l| symbols.chars().nth(l as usize).unwrap())
+                                    .map(|&l| labels.chars().nth(l as usize).unwrap())
                                     .collect_vec();
                                 format!("\'{}\'", c.iter().join(""))
                             });
@@ -290,8 +254,6 @@ mod tests {
         assert_ne!(problem0, problem1);
         assert_ne!(problem0, problem2);
         assert_ne!(problem1, problem2);
-
-        assert_ne!(problem0.symbol_map, problem1.symbol_map);
 
         problem0.normalize();
         problem1.normalize();

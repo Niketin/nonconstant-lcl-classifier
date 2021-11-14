@@ -20,26 +20,26 @@ pub struct Configurations {
 }
 
 impl Configurations {
-    /// Creates Configuration instance from given `encoding` using given `symbol_map`.
+    /// Creates Configuration instance from given `encoding` using given `label_map`.
     ///
     /// Encoding is formated as a multirow string where each configuration is separated with linebreak and each label is separated with space.
     /// Each configuration has to be equally long.
     ///
-    /// Internally each symbol is mapped to unsigned integers and then saved in vector as `u8`.
-    /// By default, symbols increase starting from 0.
-    /// A symbol_map is supposed to be given if it is desired to have multiple [`Configurations`] instances using same mapping of symbols.
+    /// Internally each label is mapped to unsigned integers and then saved in vector as `u8`.
+    /// By default, labels increase starting from 0.
+    /// A label_map is supposed to be given if it is desired to have multiple [`Configurations`] instances using same mapping of labels.
     ///
     ///
     /// # Example
     /// ```
     /// use std::collections::HashMap;
     /// # use thesis_tool_lib::Configurations;
-    /// let mut symbol_map = HashMap::<String, u8>::new();
-    /// let configurations = Configurations::from_string("A B C\nA A B\nC C C", &mut symbol_map).unwrap();
+    /// let mut label_map = HashMap::<String, u8>::new();
+    /// let configurations = Configurations::from_string("A B C\nA A B\nC C C", &mut label_map).unwrap();
     /// ```
     pub fn from_string(
         encoding: &str,
-        symbol_map: &mut HashMap<String, u8>,
+        label_map: &mut HashMap<String, u8>,
     ) -> Result<Self, Box<dyn Error>> {
         let mut lines = encoding.lines();
         let first_line = lines.next();
@@ -51,12 +51,12 @@ impl Configurations {
         let mut v = vec![];
         for line in encoding.lines() {
             let mut configuration = Vec::<u8>::new();
-            for symbol in line.split_ascii_whitespace() {
-                let value = if symbol_map.contains_key(symbol) {
-                    symbol_map.get(symbol).unwrap().clone()
+            for label in line.split_ascii_whitespace() {
+                let value = if label_map.contains_key(label) {
+                    label_map.get(label).unwrap().clone()
                 } else {
-                    let new_value = symbol_map.len() as u8;
-                    symbol_map.insert(String::from(symbol), new_value);
+                    let new_value = label_map.len() as u8;
+                    label_map.insert(String::from(label), new_value);
                     new_value
                 };
 
@@ -135,8 +135,8 @@ impl Configurations {
     /// ```
     /// use std::collections::HashMap;
     /// # use thesis_tool_lib::Configurations;
-    /// let mut symbol_map = HashMap::<String, u8>::new();
-    /// let configurations = Configurations::from_string("A B C", &mut symbol_map).unwrap();
+    /// let mut label_map = HashMap::<String, u8>::new();
+    /// let configurations = Configurations::from_string("A B C", &mut label_map).unwrap();
     /// let permutations = configurations.get_permutations();
     /// let correct = vec![
     ///     vec![0, 1, 2],
@@ -158,7 +158,7 @@ impl Configurations {
             .collect_vec()
     }
 
-    pub fn map_symbols(&self, permutation: &Vec<u8>) -> Configurations {
+    pub fn map_labels(&self, permutation: &Vec<u8>) -> Configurations {
         assert!(!permutation.is_empty());
         let data = self
             .data
@@ -186,23 +186,50 @@ impl Configurations {
         self.data.iter_mut().for_each(|c| c.sort());
     }
 
-    pub fn get_symbols(&self) -> Vec<u8> {
+    pub fn get_labels(&self) -> Vec<u8> {
         self.data.iter().flatten().copied().unique().collect_vec()
     }
 
-    pub fn get_symbols_set(&self) -> HashSet<u8> {
+    pub fn get_labels_set(&self) -> HashSet<u8> {
         HashSet::from_iter(self.data.iter().flatten().copied())
     }
 
-    pub fn remove_configurations_containing_symbol(&mut self, symbols: &[u8]) {
+    pub fn remove_configurations_containing_label(&mut self, labels: &[u8]) {
         self.data.retain(|configuration| {
-            for symbol in symbols {
-                if configuration.contains(symbol) {
+            for label in labels {
+                if configuration.contains(label) {
                     return false;
                 }
             }
             true
         });
+    }
+
+    /// Generate configurations with specified degree and alphabet.
+    pub fn generate_all(degree: usize, alphabet_length: u8) -> Vec<Configurations> {
+        let alphabet = (0..alphabet_length).collect_vec();
+        let all_combinations = Self::generate_with_all_combinations(degree, &alphabet);
+
+        let configurations_vec = (1..=all_combinations.get_configuration_count())
+            .flat_map(|max_configurations| {
+                all_combinations.get_configurations()
+                    .iter()
+                    .cloned()
+                    .combinations(max_configurations)
+            })
+            .map(|data| Configurations::from_configuration_data(data).unwrap())
+            .collect_vec();
+        return configurations_vec;
+    }
+
+    /// Generates `Configurations` that contains all combinations of the labels in `alphabet`.
+    fn generate_with_all_combinations(degree: usize, alphabet: &Vec<u8>) -> Configurations {
+        let data = alphabet
+            .iter()
+            .cloned()
+            .combinations_with_replacement(degree)
+            .collect_vec();
+        Configurations::from_configuration_data(data).unwrap()
     }
 }
 
@@ -224,14 +251,14 @@ mod tests {
 
     #[test]
     fn test_eq() {
-        let mut symbol_map = HashMap::new();
-        symbol_map.insert("A".to_string(), 0u8);
-        symbol_map.insert("B".to_string(), 1u8);
-        symbol_map.insert("C".to_string(), 2u8);
+        let mut label_map = HashMap::new();
+        label_map.insert("A".to_string(), 0u8);
+        label_map.insert("B".to_string(), 1u8);
+        label_map.insert("C".to_string(), 2u8);
 
-        let c0 = Configurations::from_string("A B B\nC C C", &mut symbol_map).unwrap();
-        let c1 = Configurations::from_string("A B\nB C\nC C", &mut symbol_map).unwrap();
-        let c2 = Configurations::from_string("A B\nB C\nC C", &mut symbol_map).unwrap();
+        let c0 = Configurations::from_string("A B B\nC C C", &mut label_map).unwrap();
+        let c1 = Configurations::from_string("A B\nB C\nC C", &mut label_map).unwrap();
+        let c2 = Configurations::from_string("A B\nB C\nC C", &mut label_map).unwrap();
 
         assert_ne!(c0, c1);
         assert_eq!(c1, c2);
@@ -239,15 +266,15 @@ mod tests {
 
     #[test]
     fn test_sort() {
-        let mut symbol_map = HashMap::new();
-        symbol_map.insert("M".to_string(), 0u8);
-        symbol_map.insert("U".to_string(), 1u8);
-        symbol_map.insert("P".to_string(), 2u8);
+        let mut label_map = HashMap::new();
+        label_map.insert("M".to_string(), 0u8);
+        label_map.insert("U".to_string(), 1u8);
+        label_map.insert("P".to_string(), 2u8);
 
-        let mut c0 = Configurations::from_string("M U U\nP P P", &mut symbol_map).unwrap();
-        let mut c1 = Configurations::from_string("U M U\nP P P", &mut symbol_map).unwrap();
-        let mut c2 = Configurations::from_string("P P P\nU U M", &mut symbol_map).unwrap();
-        let mut c3 = Configurations::from_string("M P P\nU U M", &mut symbol_map).unwrap();
+        let mut c0 = Configurations::from_string("M U U\nP P P", &mut label_map).unwrap();
+        let mut c1 = Configurations::from_string("U M U\nP P P", &mut label_map).unwrap();
+        let mut c2 = Configurations::from_string("P P P\nU U M", &mut label_map).unwrap();
+        let mut c3 = Configurations::from_string("M P P\nU U M", &mut label_map).unwrap();
 
         // Different configurations at first.
         assert_ne!(c0, c1);
