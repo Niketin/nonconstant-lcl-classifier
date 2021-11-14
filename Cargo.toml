@@ -11,7 +11,7 @@ path = "src/lib.rs"
 
 [[bin]]
 name = "thesis_tool_cli"
-path = "src/main.rs"
+path = "src/cli/main.rs"
 
 [dependencies]
 clap = "2.33.3"

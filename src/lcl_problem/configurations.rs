@@ -212,7 +212,8 @@ impl Configurations {
 
         let configurations_vec = (1..=all_combinations.get_configuration_count())
             .flat_map(|max_configurations| {
-                all_combinations.get_configurations()
+                all_combinations
+                    .get_configurations()
                     .iter()
                     .cloned()
                     .combinations(max_configurations)
