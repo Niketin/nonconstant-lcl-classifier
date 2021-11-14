@@ -22,6 +22,7 @@ pub struct SatEncoder {
     graph: BiregularGraph,
     active_permutations: Permutations,
     passive_permutations: Permutations,
+    labels: Vec<u8>,
 }
 
 enum NodeOrderInEdgeRef {
@@ -40,11 +41,17 @@ impl SatEncoder {
         let active_permutations: Permutations = lcl_problem.active.get_permutations();
         let passive_permutations: Permutations = lcl_problem.passive.get_permutations();
 
+
+        let labels_active = lcl_problem.active.get_labels_set();
+        let labels_passive = lcl_problem.passive.get_labels_set();
+        let labels = labels_active.union(&labels_passive).copied().collect_vec();
+
         SatEncoder {
             lcl_problem,
             graph,
             active_permutations,
             passive_permutations,
+            labels
         }
     }
 
@@ -62,19 +69,18 @@ impl SatEncoder {
         let active_permutations_len: usize = self.active_permutations.len();
         let passive_permutations_len: usize = self.passive_permutations.len();
 
-        let symbols = self.lcl_problem.symbol_map.values().collect_vec();
 
         // 1. Adjacent nodes need to agree on the edge's label.
         // In other words, two adjacent nodes cannot label their shared edge differently.
         for node in &self.graph.partition_a {
             for incident_edge in self.graph.graph.edges(*node) {
-                let all_symbol_pairs = symbols.iter().permutations(2);
+                let all_label_pairs = self.labels.iter().permutations(2);
 
-                for symbol_pair in all_symbol_pairs {
+                for label_pair in all_label_pairs {
                     let var_node =
-                        self.var_label(ActivePassive, incident_edge, **symbol_pair[0] as usize);
+                        self.var_label(ActivePassive, incident_edge, *label_pair[0] as usize);
                     let var_neighbour =
-                        self.var_label(PassiveActive, incident_edge, **symbol_pair[1] as usize);
+                        self.var_label(PassiveActive, incident_edge, *label_pair[1] as usize);
                     clauses.extend(at_most_one(&[var_node, var_neighbour]));
                 }
             }
@@ -212,12 +218,12 @@ impl SatEncoder {
     /// # Parameters
     /// - `first_active` tells if the first node of the `edge` is active or passive. The second node is always in the opposite partition of the graph.
     /// - `edge` is the reference to the edge in internal graph [`self.graph.graph`].
-    /// - `symbol` is the symbol of the label.
+    /// - `label` is the label of the label.
     fn var_label(
         &self,
         node_order: NodeOrderInEdgeRef,
         edge: EdgeReference<(), u32>,
-        symbol: usize,
+        label: usize,
     ) -> i32 {
         let active_permutations_size = self.active_permutations.len();
         let passive_permutations_size = self.passive_permutations.len();
@@ -229,9 +235,9 @@ impl SatEncoder {
             + passive_nodes_size * passive_permutations_size
             + 1) as i32;
 
-        let symbols_size = self.lcl_problem.symbol_map.len();
+        let labels_count = self.labels.len();
 
-        let v = edge.id().index() * symbols_size + symbol;
+        let v = edge.id().index() * labels_count + label;
 
         match node_order {
             ActivePassive => return base + (v as i32),
@@ -241,7 +247,7 @@ impl SatEncoder {
         // Variables in range base..base+active_passive_label_variables_size
         // are reserved for labels over edge from active node to passive node.
         let active_passive_label_variables_size =
-            (self.graph.graph.edge_count() * symbols_size) as i32;
+            (self.graph.graph.edge_count() * labels_count) as i32;
         return base + active_passive_label_variables_size + (v as i32);
     }
 
@@ -262,10 +268,10 @@ impl SatEncoder {
     ///   - Output: "<sign>P<node_index>_<permutation_index>"
     ///   - Example: "-P1_3"
     /// - Label of an edge between active and passive node
-    ///   - Output: "<sign>AP_<edge_index>_<symbol>"
+    ///   - Output: "<sign>AP_<edge_index>_<label>"
     ///   - Example: " AP_3_3"
     /// - Label of an edge between passive and active node
-    ///   - Output: "<sign>PA_<edge_index>_<symbol>"
+    ///   - Output: "<sign>PA_<edge_index>_<label>"
     ///   - Example: "-AP_2_1"
     ///
     fn var_to_string(&self, variable: i32) -> String {
@@ -301,28 +307,28 @@ impl SatEncoder {
         // The variable was not representing a permutation.
         // It must be either of the following types.
 
-        let symbols_size = self.lcl_problem.symbol_map.len();
+        let labels_count = self.labels.len();
 
         // Labels of edge "starting from" active nodes
         let base = base + passive_permutation_variables_len;
-        let range_active_edge_labels = base..base + (self.graph.graph.edge_count() * symbols_size);
+        let range_active_edge_labels = base..base + (self.graph.graph.edge_count() * labels_count);
         if range_active_edge_labels.contains(&variable_abs) {
             let edge_index =
-                EdgeIndexable::from_index(&self.graph.graph, (variable_abs - base) / symbols_size);
-            let temp = (variable_abs - base) % (passive_nodes_len * symbols_size);
-            let symbol = temp % symbols_size;
-            return format!("{}AP_{}_{}", sign_str, edge_index.index(), symbol);
+                EdgeIndexable::from_index(&self.graph.graph, (variable_abs - base) / labels_count);
+            let temp = (variable_abs - base) % (passive_nodes_len * labels_count);
+            let label = temp % labels_count;
+            return format!("{}AP_{}_{}", sign_str, edge_index.index(), label);
         }
 
         // Labels of edge "starting from" passive nodes
-        let base = base + self.graph.graph.edge_count() * symbols_size;
-        let range_passive_edge_labels = base..base + (self.graph.graph.edge_count() * symbols_size);
+        let base = base + self.graph.graph.edge_count() * labels_count;
+        let range_passive_edge_labels = base..base + (self.graph.graph.edge_count() * labels_count);
         if range_passive_edge_labels.contains(&variable_abs) {
             let edge_index =
-                EdgeIndexable::from_index(&self.graph.graph, (variable_abs - base) / symbols_size);
-            let temp = (variable_abs - base) % (active_nodes_len * symbols_size);
-            let symbol = temp % symbols_size;
-            return format!("{}PA_{}_{}", sign_str, edge_index.index(), symbol);
+                EdgeIndexable::from_index(&self.graph.graph, (variable_abs - base) / labels_count);
+            let temp = (variable_abs - base) % (active_nodes_len * labels_count);
+            let label = temp % labels_count;
+            return format!("{}PA_{}_{}", sign_str, edge_index.index(), label);
         }
 
         unreachable!();
