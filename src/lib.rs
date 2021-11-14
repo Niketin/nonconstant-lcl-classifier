@@ -29,7 +29,7 @@ mod tests {
         assert!(!graphs.is_empty());
 
         graphs.into_iter().for_each(|graph| {
-            let sat_encoder = SatEncoder::new(lcl_problem.clone(), graph);
+            let sat_encoder = SatEncoder::new(&lcl_problem, graph);
             let clauses = sat_encoder.encode();
             let result = SatSolver::solve(&clauses);
             assert_eq!(result, SatResult::Unsatisfiable);
@@ -52,7 +52,7 @@ mod tests {
 
         assert!(!graphs.is_empty());
         graphs.into_iter().for_each(|graph| {
-            let sat_encoder = SatEncoder::new(lcl_problem.clone(), graph);
+            let sat_encoder = SatEncoder::new(&lcl_problem, graph);
             let clauses = sat_encoder.encode();
             let result = SatSolver::solve(&clauses);
             assert_eq!(result, SatResult::Satisfiable);
@@ -81,7 +81,7 @@ mod tests {
                 graphs
                     .into_iter()
                     .map(|graph| {
-                        let sat_encoder = SatEncoder::new(lcl_problem.clone(), graph);
+                        let sat_encoder = SatEncoder::new(&lcl_problem, graph);
                         let clauses = sat_encoder.encode();
                         SatSolver::solve(&clauses)
                     })
@@ -118,7 +118,7 @@ mod tests {
         let results = graphs
             .into_iter()
             .map(|graph| {
-                let sat_encoder = SatEncoder::new(lcl_problem.clone(), graph);
+                let sat_encoder = SatEncoder::new(&lcl_problem, graph);
                 let clauses = sat_encoder.encode();
                 sat_encoder.print_clauses(&clauses);
                 SatSolver::solve(&clauses)
