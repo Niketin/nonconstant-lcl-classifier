@@ -120,7 +120,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let pb = get_progress_bar(graphs.len() as u64);
         let encoders = pb
             .wrap_iter(graphs.into_iter())
-            .map(|graph| SatEncoder::new(lcl_problem.clone(), graph))
+            .map(|graph| SatEncoder::new(&lcl_problem, graph))
             .collect_vec();
         pb.finish_and_clear();
 

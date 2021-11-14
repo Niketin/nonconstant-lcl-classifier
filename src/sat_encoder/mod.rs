@@ -18,7 +18,6 @@ pub type Permutations = Vec<Vec<u8>>;
 ///
 /// More about SAT [here](https://en.wikipedia.org/wiki/Boolean_satisfiability_problem).
 pub struct SatEncoder {
-    lcl_problem: LclProblem,
     graph: BiregularGraph,
     active_permutations: Permutations,
     passive_permutations: Permutations,
@@ -37,7 +36,7 @@ impl SatEncoder {
     /// the fields 'active_permutations' and 'passive_permutations' of the struct.
     /// Only unique permutations are saved.
     /// More about permutations in documentation of function [`crate::Configurations::get_permutations`].
-    pub fn new(lcl_problem: LclProblem, graph: BiregularGraph) -> SatEncoder {
+    pub fn new(lcl_problem: &LclProblem, graph: BiregularGraph) -> SatEncoder {
         let active_permutations: Permutations = lcl_problem.active.get_permutations();
         let passive_permutations: Permutations = lcl_problem.passive.get_permutations();
 
@@ -47,7 +46,6 @@ impl SatEncoder {
         let labels = labels_active.union(&labels_passive).copied().collect_vec();
 
         SatEncoder {
-            lcl_problem,
             graph,
             active_permutations,
             passive_permutations,
