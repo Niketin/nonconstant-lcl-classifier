@@ -5,7 +5,10 @@ use itertools::Itertools;
 use std::{
     cmp::Ordering,
     collections::HashMap,
+    fs::File,
     hash::{Hash, Hasher},
+    io::Write,
+    path::PathBuf,
 };
 
 /// Locally Checkable Labeling problem for biregular graphs.
@@ -48,6 +51,42 @@ impl LclProblem {
         })
     }
 
+    /// Checks if either active or passive partition is empty.
+    fn contains_empty_partition(&self) -> bool {
+        self.active.get_configurations().is_empty() || self.passive.get_configurations().is_empty()
+    }
+
+    /// Adapted from https://github.com/AleksTeresh/lcl-classifier/blob/be5d0196b02dad33ee19657af6b16457f59780e9/src/server/problem/problem.py#L378
+    fn purge(&mut self) {
+        let mut active_symbols = self.active.get_symbols_set();
+        let mut passive_symbols = self.passive.get_symbols_set();
+
+        while active_symbols
+            .symmetric_difference(&passive_symbols)
+            .next()
+            .is_some()
+        {
+            let diff = active_symbols
+                .difference(&passive_symbols)
+                .copied()
+                .collect_vec();
+            if !diff.is_empty() {
+                self.active.remove_configurations_containing_symbol(&diff);
+            }
+
+            let diff = passive_symbols
+                .difference(&active_symbols)
+                .copied()
+                .collect_vec();
+            if !diff.is_empty() {
+                self.passive.remove_configurations_containing_symbol(&diff);
+            }
+
+            active_symbols = self.active.get_symbols_set();
+            passive_symbols = self.passive.get_symbols_set();
+        }
+    }
+
     pub fn normalize(&mut self) {
         let mut problems = self.get_all_permutations();
 
@@ -67,6 +106,10 @@ impl LclProblem {
         std::mem::swap(&mut first.1, &mut self.passive);
     }
 
+    /// Generate all unique problems of a class.
+    ///
+    /// Uses `Self::purge` for each generated problem and
+    /// removes problems with empty partition from the result.
     pub fn generate(active_degree: usize, passive_degree: usize, label_count: u8) -> Vec<Self> {
         let labels = (0..label_count).collect_vec();
         let generated_collections_of_active_configurations =
@@ -74,25 +117,34 @@ impl LclProblem {
         let generated_collections_of_passive_configurations =
             Self::generate_all(passive_degree, &labels);
 
-        let mut a = vec![];
-        for active in &generated_collections_of_active_configurations {
-            for passive in &generated_collections_of_passive_configurations {
-                let problem =
+        generated_collections_of_active_configurations
+            .iter()
+            .cartesian_product(generated_collections_of_passive_configurations.iter())
+            .filter_map(|(active, passive)| {
+                let mut problem =
                     LclProblem::from_configurations(active.clone(), passive.clone()).unwrap();
-                a.push(problem);
-            }
-        }
-        return a;
+                problem.purge();
+                if !problem.contains_empty_partition() {
+                    return Some(problem);
+                }
+                None
+            })
+            .unique()
+            .collect_vec()
     }
 
+    /// Generates all unique normalized problems of a class.
+    ///
+    /// Generates problems with `Self::generate` and then normalizes them.
+    /// Returns only unique problems.
     pub fn generate_normalized(
         active_degree: usize,
         passive_degree: usize,
         label_count: u8,
     ) -> Vec<Self> {
-        let mut a = Self::generate(active_degree, passive_degree, label_count);
-        a.iter_mut().for_each(|p| p.normalize());
-        return a.into_iter().unique().collect_vec();
+        let mut problems = Self::generate(active_degree, passive_degree, label_count);
+        problems.iter_mut().for_each(|p| p.normalize());
+        return problems.into_iter().unique().collect_vec();
     }
 
     fn get_all_permutations(&self) -> Vec<(Configurations, Configurations)> {
@@ -138,6 +190,48 @@ impl LclProblem {
             .cloned()
             .combinations_with_replacement(degree)
             .collect_vec()
+    }
+
+    /// Writes problems to a file and removes old content.
+    ///
+    /// Creates the file if it does not exist in `path`.
+    /// Problems are separeted with newline.
+    /// Supports up to 7 different symbols.
+    /// The symbols are the 7 first letters in the alphabet.
+    ///
+    /// An example of a problem:
+    /// ```['AAB', 'AAC']; ['AB', 'AC] ```
+    pub fn write_to_file(
+        path: PathBuf,
+        problems: &Vec<LclProblem>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let mut file = File::create(path)?;
+
+        let symbols = "ABCDEFG";
+
+        problems.iter().for_each(|ref problem| {
+            let asd = [&problem.active, &problem.passive]
+                .iter()
+                .map(|problem_set| {
+                    let mut conf =
+                        problem_set
+                            .get_configurations()
+                            .into_iter()
+                            .map(|configuration| {
+                                let c = configuration
+                                    .iter()
+                                    .map(|&l| symbols.chars().nth(l as usize).unwrap())
+                                    .collect_vec();
+                                format!("\'{}\'", c.iter().join(""))
+                            });
+                    format!("[{}]", conf.join(", "))
+                })
+                .collect_vec();
+            file.write(format!("{}\n", asd.join("; ")).as_bytes())
+                .unwrap();
+        });
+
+        Ok(())
     }
 }
 
@@ -212,18 +306,18 @@ mod tests {
     #[test]
     fn test_problems_count() {
         let problems = LclProblem::generate(3, 2, 3);
-        assert_eq!(problems.len(), 64449)
+        assert_eq!(problems.len(), 44343)
     }
 
     #[test]
     fn test_normalized_problems_count_0() {
         let problems = LclProblem::generate_normalized(2, 1, 2);
-        assert_eq!(problems.len(), 12);
+        assert_eq!(problems.len(), 5);
     }
 
     #[test]
     fn test_normalized_problems_count_1() {
         let problems = LclProblem::generate_normalized(3, 2, 3);
-        assert_eq!(problems.len(), 11229);
+        assert_eq!(problems.len(), 7735);
     }
 }
