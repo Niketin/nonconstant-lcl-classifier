@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         (_, _) => unreachable!(),
     };
 
-    for (problem_i, problem) in problems.iter().enumerate() {
+    'problem_loop: for (problem_i, problem) in problems.iter().enumerate() {
         let a_len = problem.active.get_labels_per_configuration();
         let p_len = problem.passive.get_labels_per_configuration();
         println!("problem {}", problem_i);
@@ -177,7 +177,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     save_as_svg(path, &dot).expect("Failed to save graph as svg.");
                     println!("{} '{}'", style("Saved the graph to path").green(), path);
                 }
-                break;
+                if !matches_find.is_present("all") {
+                    break 'problem_loop;
+                }
             }
         }
     }

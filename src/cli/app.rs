@@ -37,6 +37,12 @@ pub fn build_cli() -> App<'static, 'static> {
         .value_names(&["active_degree", "passive_degree", "label_count"])
         .required(true);
 
+    let all = Arg::with_name("all")
+        .help("Find all results.")
+        .short("a")
+        .long("all")
+        .required(false);
+
     let simple_graphs_only = Arg::with_name("simple_graphs_only")
         .help("Generate only simple graphs.")
         .short("s")
@@ -69,7 +75,7 @@ pub fn build_cli() -> App<'static, 'static> {
     let subcommand_find = SubCommand::with_name("find")
         .setting(AppSettings::SubcommandRequired)
         .about("Find an unsolvable pair of graph and problem.")
-        .args(&[graph_size_bound, progress, simple_graphs_only, output_svg])
+        .args(&[graph_size_bound, progress, all, simple_graphs_only, output_svg])
         .subcommands([subcommand_single, subcommand_class]);
 
     App::new("Thesis tool")
