@@ -63,19 +63,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let a_len = problem.active.get_labels_per_configuration();
         let p_len = problem.passive.get_labels_per_configuration();
         println!("problem {}", problem_i);
+        println!(
+            "{} Finding...",
+            style(format!("[{}/{}]", problem_i + 1, problems.len()))
+                .bold()
+                .dim(),
+        );
+
+        let indent_level = 2;
         for (i, n) in (n_lower..=n_upper).enumerate() {
             println!(
-                "{} Starting the routine for graphs of size {}...",
+                "{}{} Starting the routine for graphs of size {}...",
+                indent(indent_level),
                 style(format!("[{}/{}]", i + 1, n_upper - n_lower + 1))
                     .bold()
                     .dim(),
-                style(format!("n={}", n)).cyan()
+                style(format!("n={}", n)).cyan(),
             );
 
             // Generate biregular graphs.
             let now = Instant::now();
             println!(
-                "    {} Generating nonisomorphic ({},{})-biregular graphs...",
+                "{}{} Generating nonisomorphic ({},{})-biregular graphs...",
+                indent(indent_level + 2),
                 style("[1/4]").bold().dim(),
                 a_len,
                 p_len,
@@ -87,10 +97,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 now.elapsed().as_secs_f32()
             );
 
-            // Encode graphs and LCL-problem into SAT problems.
+            // Create SAT encoders.
             let now = Instant::now();
             println!(
-                "    {} Creating SAT encoders...",
+                "{}{} Creating SAT encoders...",
+                indent(indent_level + 2),
                 style("[2/4]").bold().dim(),
             );
             let pb = get_progress_bar(graphs.len() as u64);
@@ -100,8 +111,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .collect_vec();
             pb.finish_and_clear();
 
+            // Encode graphs and LCL-problem into SAT problems.
             println!(
-                "    {} Encoding problems and graphs into SAT problems...",
+                "{}{} Encoding problems and graphs into SAT problems...",
+                indent(indent_level + 2),
                 style("[3/4]").bold().dim(),
             );
             let pb = get_progress_bar(encoders.len() as u64);
@@ -119,7 +132,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Solve SAT problems.
             let now = Instant::now();
             println!(
-                "    {} Solving SAT problems...",
+                "{}{} Solving SAT problems...",
+                indent(indent_level + 2),
                 style("[4/4]").bold().dim(),
             );
 
@@ -136,9 +150,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             pb.finish_and_clear();
 
             if result_i.is_some() {
-                println!("    {}", style("An unsatisfiable result found!").green());
+                println!(
+                    "{}{}",
+                    indent(indent_level + 2),
+                    style("An unsatisfiable result found!").green()
+                );
             } else {
-                println!("    {}", style("No unsatisfiable results.").red());
+                println!(
+                    "{}{}",
+                    indent(indent_level + 2),
+                    style("No unsatisfiable results.").red()
+                );
             }
 
             info!(
@@ -149,6 +171,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let graph = encoders[result_i.unwrap()].get_graph();
                 let dot = graph.graph.get_dot();
                 println!("{}", dot);
+                println!("{:?}", problem);
 
                 if let Some(path) = matches.value_of("output_svg") {
                     save_as_svg(path, &dot).expect("Failed to save graph as svg.");
@@ -160,4 +183,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+}
+
+fn indent(level: usize) -> String {
+    format!("{:<1$}", "", level)
 }
