@@ -173,7 +173,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("{}", dot);
                 println!("{:?}", problem);
 
-                if let Some(path) = matches.value_of("output_svg") {
+                if let Some(path) = matches_find.value_of("output_svg") {
                     save_as_svg(path, &dot).expect("Failed to save graph as svg.");
                     println!("{} '{}'", style("Saved the graph to path").green(), path);
                 }
