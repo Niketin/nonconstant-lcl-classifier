@@ -159,43 +159,50 @@ impl LclProblem {
     /// Writes problems to a file and removes old content.
     ///
     /// Creates the file if it does not exist in `path`.
-    /// Problems are separeted with newline.
-    /// Supports up to 7 different labels.
-    /// The labels are the 7 first letters in the alphabet.
-    ///
-    /// An example of a problem:
-    /// ```['AAB', 'AAC']; ['AB', 'AC] ```
+    /// Problems are converted to strings using `LclProblem::to_string`
+    /// and are separeted with newline.
     pub fn write_to_file(
         path: PathBuf,
         problems: &Vec<LclProblem>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let mut file = File::create(path)?;
 
-        let labels = "ABCDEFG";
-
         problems.iter().for_each(|ref problem| {
-            let asd = [&problem.active, &problem.passive]
-                .iter()
-                .map(|problem_set| {
-                    let mut conf =
-                        problem_set
-                            .get_configurations()
-                            .into_iter()
-                            .map(|configuration| {
-                                let c = configuration
-                                    .iter()
-                                    .map(|&l| labels.chars().nth(l as usize).unwrap())
-                                    .collect_vec();
-                                format!("\'{}\'", c.iter().join(""))
-                            });
-                    format!("[{}]", conf.join(", "))
-                })
-                .collect_vec();
-            file.write(format!("{}\n", asd.join("; ")).as_bytes())
+            let problem_string = problem.to_string();
+            file.write(format!("{}\n", problem_string).as_bytes())
                 .unwrap();
         });
 
         Ok(())
+    }
+
+    /// Returns a string representation of the problem.
+    ///
+    /// Supports up to 7 different labels.
+    /// The labels are the 7 first letters in the alphabet.
+    ///
+    /// An example of a problem:
+    /// ```['AAB', 'AAC']; ['AB', 'AC] ```
+    pub fn to_string(&self) -> String {
+        let labels = "ABCDEFG";
+        let configurations = [&self.active, &self.passive];
+        let configurations_string = configurations
+            .iter()
+            .map(|problem_set| {
+                let mut conf = problem_set
+                    .get_configurations()
+                    .into_iter()
+                    .map(|configuration| {
+                        let c = configuration
+                            .iter()
+                            .map(|&l| labels.chars().nth(l as usize).unwrap())
+                            .collect_vec();
+                        format!("\'{}\'", c.iter().join(""))
+                    });
+                format!("[{}]", conf.join(", "))
+            })
+            .collect_vec();
+        format!("{}", configurations_string.join("; "))
     }
 }
 
