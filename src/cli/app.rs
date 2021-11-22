@@ -53,12 +53,17 @@ pub fn build_cli() -> App<'static, 'static> {
         .help("Show progress.")
         .short("p")
         .long("show-progress")
-        .required(false);
+        .multiple(true);
 
     let output_svg = Arg::with_name("output_svg")
         .help("If unsatisfiable result is found, output graph as svg to the path.")
         .long("svg")
         .takes_value(true);
+
+    let verbosity = Arg::with_name("verbosity")
+        .short("v")
+        .help("Sets the level of verbosity")
+        .multiple(true);
 
     let subcommand_single = SubCommand::with_name("single")
         .about("Run for a single problem")
@@ -75,7 +80,14 @@ pub fn build_cli() -> App<'static, 'static> {
     let subcommand_find = SubCommand::with_name("find")
         .setting(AppSettings::SubcommandRequired)
         .about("Find an unsolvable pair of graph and problem.")
-        .args(&[graph_size_bound, progress, all, simple_graphs_only, output_svg])
+        .args(&[
+            graph_size_bound,
+            progress,
+            all,
+            simple_graphs_only,
+            output_svg,
+            verbosity,
+        ])
         .subcommands([subcommand_single, subcommand_class]);
 
     App::new("Thesis tool")
