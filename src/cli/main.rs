@@ -94,6 +94,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pb_problems = get_progress_bar(problems.len() as u64, 1);
 
     pb_problems.set_style(get_progress_style());
+
+    pb_problems.set_message("Trying to find negative proofs for problems...");
     if progress == 1 {
         pb_problems.enable_steady_tick(100);
     }
@@ -260,7 +262,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    pb_problems.finish();
+    pb_problems.finish_with_message("Finding negative proofs done!");
 
     for (problem, graph_node_count) in results {
         println!("{:2}: {}", graph_node_count, problem.to_string());
