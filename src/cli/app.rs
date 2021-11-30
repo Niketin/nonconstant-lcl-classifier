@@ -72,7 +72,7 @@ pub fn build_cli() -> App<'static, 'static> {
         .about("Run for a class of problems.")
         .long_about(indoc!{"
             Run for a class of problems.
-            
+
             Class is defined by degree of active partition, degree of passive partition and label count.
             Each problem in the class will be generated."})
         .arg(problem_class);
