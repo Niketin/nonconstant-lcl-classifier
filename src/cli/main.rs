@@ -93,7 +93,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     pb_problems.set_style(get_progress_style());
 
-    pb_problems.set_message("Trying to find a negative proof for each problem...");
+    pb_problems.set_message("Trying to find a lower bound proof for each problem...");
     if progress == 1 {
         pb_problems.enable_steady_tick(100);
     }
@@ -260,7 +260,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    pb_problems.finish_with_message("Finding negative proofs done!");
+    pb_problems.finish_with_message("Finding lower bound proofs done!");
 
     for (problem, graph_node_count) in results {
         println!("n={:2}: {}", graph_node_count, problem.to_string());
