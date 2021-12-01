@@ -101,7 +101,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     pb_graphs.enable_steady_tick(100);
 
     if verbosity >= 2 {
-        println!(
+        eprintln!(
             "Generating nonisomorphic ({},{})-biregular graphs...",
             deg_a, deg_p,
         );
@@ -126,9 +126,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut results = vec![];
 
     let pb_problems = get_progress_bar(problems.len() as u64, 1);
-
     pb_problems.set_style(get_progress_style());
-
     pb_problems.set_message("Trying to find a lower bound proof for each problem...");
     if progress == 1 {
         pb_problems.enable_steady_tick(100);
@@ -136,7 +134,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for (problem_i, problem) in pb_problems.wrap_iter(problems.iter()).enumerate() {
         if verbosity >= 1 {
-            println!(
+            eprintln!(
                 "Finding for problem {}...",
                 style(format!("[{}/{}]", problem_i + 1, problems.len()))
                     .bold()
@@ -149,7 +147,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         'graph_size_loop: for (i, n) in (n_lower..=n_upper).enumerate() {
             let graphs_n = &graphs[i];
             if verbosity >= 2 {
-                println!(
+                eprintln!(
                     "{}{} Starting the routine for graphs of size {}...",
                     indent(indent_level),
                     style(format!("[{}/{}]", i + 1, n_upper - n_lower + 1))
@@ -161,7 +159,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Create SAT encoders.
             let now = Instant::now();
             if verbosity >= 3 {
-                println!(
+                eprintln!(
                     "{}{} Creating SAT encoders...",
                     indent(indent_level + 2),
                     style("[2/4]").bold().dim(),
@@ -180,7 +178,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             // Encode graphs and LCL-problem into SAT problems.
             if verbosity >= 3 {
-                println!(
+                eprintln!(
                     "{}{} Encoding problems and graphs into SAT problems...",
                     indent(indent_level + 2),
                     style("[3/4]").bold().dim(),
@@ -204,7 +202,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Solve SAT problems.
             let now = Instant::now();
             if verbosity >= 3 {
-                println!(
+                eprintln!(
                     "{}{} Solving SAT problems...",
                     indent(indent_level + 2),
                     style("[4/4]").bold().dim(),
@@ -229,16 +227,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             if verbosity >= 3 {
                 if unsat_result_index.is_some() {
-                    println!(
+                    eprintln!(
                         "{}{}",
                         indent(indent_level + 2),
-                        style("An unsatisfiable result found!").green()
+                        style("A lower bound found!").green()
                     );
                 } else {
-                    println!(
+                    eprintln!(
                         "{}{}",
                         indent(indent_level + 2),
-                        style("No unsatisfiable results.").red()
+                        style("No lower bound found.").red()
                     );
                 }
             }
@@ -256,7 +254,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if let Some(path) = matches_find.value_of("output_svg") {
                     save_as_svg(path, &dot).expect("Failed to save graph as svg.");
                     if verbosity >= 2 {
-                        println!("{} '{}'", style("Saved the graph to path").green(), path);
+                        eprintln!("{} '{}'", style("Saved the graph to path").green(), path);
                     }
                 }
                 if !matches_find.is_present("all") {
