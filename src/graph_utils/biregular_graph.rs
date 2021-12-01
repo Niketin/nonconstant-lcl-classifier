@@ -18,6 +18,7 @@ use petgraph::graph::NodeIndex;
 /// Has two partitions, `partition_a` and `partition_b`.
 /// Nodes in `partition_a` have degree of `degree_a`.
 /// Nodes in `partition_b` have degree of `degree_b`.
+#[derive(Clone)]
 pub struct BiregularGraph {
     pub graph: UndirectedGraph,
     pub partition_a: Vec<NodeIndex>,

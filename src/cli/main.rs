@@ -1,8 +1,8 @@
 mod app;
 
 use app::build_cli;
-use clap::values_t_or_exit;
 use clap::value_t_or_exit;
+use clap::values_t_or_exit;
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
@@ -79,6 +79,50 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     pb_gen_problems.set_style(get_progress_style_no_speed());
     pb_gen_problems.finish_with_message("Defining problem(s) done!");
 
+    let deg_a = problems
+        .first()
+        .unwrap()
+        .active
+        .get_labels_per_configuration();
+    let deg_p = problems
+        .first()
+        .unwrap()
+        .passive
+        .get_labels_per_configuration();
+
+    let mut graphs = vec![];
+
+    let pb_graphs = get_progress_bar(0, 1);
+    pb_graphs.set_style(get_spinner());
+    pb_graphs.set_message(format!(
+        "Generating nonisomorphic ({},{})-biregular graphs...",
+        deg_a, deg_p,
+    ));
+    pb_graphs.enable_steady_tick(100);
+
+    if verbosity >= 2 {
+        println!(
+            "Generating nonisomorphic ({},{})-biregular graphs...",
+            deg_a, deg_p,
+        );
+    }
+    for n in n_lower..=n_upper {
+        // Generate biregular graphs.
+        let now = Instant::now();
+        let graphs_n = BiregularGraph::generate_multigraph(n, deg_a, deg_p);
+        info!(
+            "Generated {} nonisomorphic biregular graphs in {} s",
+            graphs_n.len(),
+            now.elapsed().as_secs_f32()
+        );
+
+        graphs.push(graphs_n);
+    }
+    pb_graphs.finish_with_message(format!(
+        "Generating nonisomorphic ({},{})-biregular graphs done!",
+        deg_a, deg_p,
+    ));
+
     let mut results = vec![];
 
     let pb_problems = get_progress_bar(problems.len() as u64, 1);
@@ -91,9 +135,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     for (problem_i, problem) in pb_problems.wrap_iter(problems.iter()).enumerate() {
-        let a_len = problem.active.get_labels_per_configuration();
-        let p_len = problem.passive.get_labels_per_configuration();
-
         if verbosity >= 1 {
             println!(
                 "Finding for problem {}...",
@@ -106,6 +147,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let indent_level = 2;
 
         'graph_size_loop: for (i, n) in (n_lower..=n_upper).enumerate() {
+            let graphs_n = &graphs[i];
             if verbosity >= 2 {
                 println!(
                     "{}{} Starting the routine for graphs of size {}...",
@@ -116,34 +158,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     style(format!("n={}", n)).cyan(),
                 );
             }
-            let pb = get_progress_bar(0, 2);
-            pb.set_style(get_spinner());
-            pb.set_message(format!(
-                "Generating nonisomorphic ({},{})-biregular graphs...",
-                a_len, p_len,
-            ));
-            pb.enable_steady_tick(100);
-
-            // Generate biregular graphs.
-            let now = Instant::now();
-            if verbosity >= 3 {
-                println!(
-                    "{}{} Generating nonisomorphic ({},{})-biregular graphs...",
-                    indent(indent_level + 2),
-                    style("[1/4]").bold().dim(),
-                    a_len,
-                    p_len,
-                );
-            }
-            let graphs = BiregularGraph::generate_multigraph(n, a_len, p_len);
-            info!(
-                "Generated {} nonisomorphic biregular graphs in {} s",
-                graphs.len(),
-                now.elapsed().as_secs_f32()
-            );
-
-            pb.finish_and_clear();
-
             // Create SAT encoders.
             let now = Instant::now();
             if verbosity >= 3 {
@@ -154,12 +168,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
 
-            let pb = get_progress_bar(graphs.len() as u64, 2);
+            let pb = get_progress_bar(graphs_n.len() as u64, 2);
             pb.set_style(get_progress_style());
             pb.set_message("Creating SAT encoders");
             let encoders = pb
-                .wrap_iter(graphs.into_iter())
-                .map(|graph| SatEncoder::new(&problem, graph))
+                .wrap_iter(graphs_n.into_iter())
+                .map(|graph| SatEncoder::new(&problem, graph.clone())) // TODO use immutable reference instead of cloning.
                 .collect_vec();
 
             pb.finish_and_clear();
