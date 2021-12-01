@@ -2,13 +2,13 @@ use clap::{App, AppSettings, Arg, SubCommand};
 use indoc::indoc;
 
 pub fn build_cli() -> App<'static, 'static> {
-    let graph_size_bound = Arg::with_name("graph_size_bound")
-        .long("graph-sizes")
-        .short("n")
-        .takes_value(true)
-        .number_of_values(2)
-        .value_names(&["lower_bound", "upper_bound"])
-        .help("Set bounds for graph sizes. The range is inclusive.")
+    let min_nodes = Arg::with_name("min_nodes")
+        .index(1)
+        .help("Sets the maximum number of nodes for the generated graphs.")
+        .required(true);
+    let max_nodes = Arg::with_name("max_nodes")
+        .index(2)
+        .help("Sets the maximum number of nodes for the generated graphs.")
         .required(true);
 
     let active_configurations = Arg::with_name("active_configurations")
@@ -56,7 +56,7 @@ pub fn build_cli() -> App<'static, 'static> {
         .multiple(true);
 
     let output_svg = Arg::with_name("output_svg")
-        .help("If unsatisfiable result is found, output graph as svg to the path.")
+        .help("If a lower-bound proof is found, output graph as svg to the path.")
         .long("svg")
         .takes_value(true);
 
@@ -70,7 +70,7 @@ pub fn build_cli() -> App<'static, 'static> {
         .args(&[active_configurations, passive_configurations]);
     let subcommand_class = SubCommand::with_name("class")
         .about("Run for a class of problems.")
-        .long_about(indoc!{"
+        .long_about(indoc! {"
             Run for a class of problems.
 
             Class is defined by degree of active partition, degree of passive partition and label count.
@@ -81,7 +81,8 @@ pub fn build_cli() -> App<'static, 'static> {
         .setting(AppSettings::SubcommandRequired)
         .about("Find an unsolvable pair of graph and problem.")
         .args(&[
-            graph_size_bound,
+            min_nodes,
+            max_nodes,
             progress,
             all,
             simple_graphs_only,
@@ -93,5 +94,10 @@ pub fn build_cli() -> App<'static, 'static> {
     App::new("Thesis tool")
         .setting(AppSettings::SubcommandRequired)
         .subcommand(subcommand_find)
-        .about("This tool can be used to find negative proofs of LCL-problems solvability on the Port Numbering model. TODO")
+        .about("This tool can be used to find lower-bound proofs for LCL-problems.")
+        .long_about(indoc! {"
+        This tool can be used to find lower-bound proofs for LCL-problems.
+
+        TODO
+        "})
 }

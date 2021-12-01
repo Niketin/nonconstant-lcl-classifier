@@ -2,6 +2,7 @@ mod app;
 
 use app::build_cli;
 use clap::values_t_or_exit;
+use clap::value_t_or_exit;
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
@@ -17,11 +18,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches_find = matches.subcommand_matches("find").unwrap();
     let verbosity = matches_find.occurrences_of("verbosity");
     let progress = matches_find.occurrences_of("progress");
-
-    let (n_lower, n_upper) = {
-        let values = values_t_or_exit!(matches_find, "graph_size_bound", usize);
-        (values[0], values[1])
-    };
+    let n_lower = value_t_or_exit!(matches_find, "min_nodes", usize);
+    let n_upper = value_t_or_exit!(matches_find, "max_nodes", usize);
 
     let simple_graphs_only = matches_find.is_present("simple_graphs_only");
 
@@ -95,7 +93,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     pb_problems.set_style(get_progress_style());
 
-    pb_problems.set_message("Trying to find negative proofs for problems...");
+    pb_problems.set_message("Trying to find a negative proof for each problem...");
     if progress == 1 {
         pb_problems.enable_steady_tick(100);
     }
@@ -265,7 +263,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     pb_problems.finish_with_message("Finding negative proofs done!");
 
     for (problem, graph_node_count) in results {
-        println!("{:2}: {}", graph_node_count, problem.to_string());
+        println!("n={:2}: {}", graph_node_count, problem.to_string());
     }
 
     Ok(())
