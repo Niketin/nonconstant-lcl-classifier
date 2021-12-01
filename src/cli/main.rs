@@ -21,20 +21,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let n_lower = value_t_or_exit!(matches_find, "min_nodes", usize);
     let n_upper = value_t_or_exit!(matches_find, "max_nodes", usize);
 
-    let simple_graphs_only = matches_find.is_present("simple_graphs_only");
-
     let get_progress_bar = |n: u64, progress_level| {
         if progress >= progress_level {
             ProgressBar::new(n)
         } else {
             ProgressBar::hidden()
         }
-    };
-
-    let graph_generator = if simple_graphs_only {
-        BiregularGraph::generate_simple
-    } else {
-        BiregularGraph::generate_multigraph
     };
 
     let get_progress_style = || {
@@ -143,7 +135,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     p_len,
                 );
             }
-            let graphs = graph_generator(n, a_len, p_len);
+            let graphs = BiregularGraph::generate_multigraph(n, a_len, p_len);
             info!(
                 "Generated {} nonisomorphic biregular graphs in {} s",
                 graphs.len(),
