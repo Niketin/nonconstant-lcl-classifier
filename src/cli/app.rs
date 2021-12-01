@@ -43,12 +43,6 @@ pub fn build_cli() -> App<'static, 'static> {
         .long("all")
         .required(false);
 
-    let simple_graphs_only = Arg::with_name("simple_graphs_only")
-        .help("Generate only simple graphs.")
-        .short("s")
-        .long("simple-graphs-only")
-        .required(false);
-
     let progress = Arg::with_name("progress")
         .help("Show progress.")
         .short("p")
@@ -92,7 +86,6 @@ pub fn build_cli() -> App<'static, 'static> {
             max_nodes,
             progress,
             all,
-            simple_graphs_only,
             output_svg,
             verbosity,
         ])
