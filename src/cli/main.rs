@@ -67,10 +67,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             vec![lcl_problem]
         }
         ("class", Some(sub_m)) => {
-            let (active_degree, passive_degree, label_count) = {
-                let values = values_t_or_exit!(sub_m, "problem_class", usize);
-                (values[0], values[1], values[2])
-            };
+            let active_degree = value_t_or_exit!(sub_m, "active_degree", usize);
+            let passive_degree = value_t_or_exit!(sub_m, "passive_degree", usize);
+            let label_count = value_t_or_exit!(sub_m, "label_count", usize);
             LclProblem::generate_normalized(active_degree, passive_degree, label_count as u8)
         }
         (_, _) => unreachable!(),
