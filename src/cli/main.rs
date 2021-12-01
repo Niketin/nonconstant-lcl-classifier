@@ -100,7 +100,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ));
     pb_graphs.enable_steady_tick(100);
 
-    if verbosity >= 2 {
+    if verbosity >= 1 {
         eprintln!(
             "Generating nonisomorphic ({},{})-biregular graphs...",
             deg_a, deg_p,
@@ -267,7 +267,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     pb_problems.finish_with_message("Finding lower bound proofs done!");
 
     for (problem, graph_node_count) in results {
-        println!("n={:2}: {}", graph_node_count, problem.to_string());
+        println!("n = {:2}: {}", graph_node_count, problem.to_string());
     }
 
     Ok(())
