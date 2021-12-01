@@ -4,7 +4,7 @@ use indoc::indoc;
 pub fn build_cli() -> App<'static, 'static> {
     let min_nodes = Arg::with_name("min_nodes")
         .index(1)
-        .help("Sets the maximum number of nodes for the generated graphs.")
+        .help("Sets the minimum number of nodes for the generated graphs.")
         .required(true);
     let max_nodes = Arg::with_name("max_nodes")
         .index(2)
