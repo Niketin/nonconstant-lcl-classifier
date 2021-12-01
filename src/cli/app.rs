@@ -92,6 +92,7 @@ pub fn build_cli() -> App<'static, 'static> {
         .subcommands([subcommand_single, subcommand_class]);
 
     App::new("Thesis tool")
+        .version("0.3.0")
         .setting(AppSettings::SubcommandRequired)
         .subcommand(subcommand_find)
         .about("This tool can be used to find lower-bound proofs for LCL-problems.")
