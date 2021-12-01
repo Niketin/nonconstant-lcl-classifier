@@ -56,7 +56,7 @@ pub fn build_cli() -> App<'static, 'static> {
         .multiple(true);
 
     let output_svg = Arg::with_name("output_svg")
-        .help("If a lower-bound proof is found, output graph as svg to the path.")
+        .help("If a lower bound proof is found, output graph as svg to the path.")
         .long("svg")
         .takes_value(true);
 
@@ -69,7 +69,7 @@ pub fn build_cli() -> App<'static, 'static> {
         .about("Run for a single problem")
         .args(&[active_configurations, passive_configurations]);
     let subcommand_class = SubCommand::with_name("class")
-        .about("Run for a class of problems.")
+        .about("Run for a class of problems")
         .long_about(indoc! {"
             Run for a class of problems.
 
@@ -79,7 +79,14 @@ pub fn build_cli() -> App<'static, 'static> {
 
     let subcommand_find = SubCommand::with_name("find")
         .setting(AppSettings::SubcommandRequired)
-        .about("Find an unsolvable pair of graph and problem.")
+        .about("Find lower bound proofs for LCL-problems")
+        .long_about(indoc! {"
+        Find lower bound proofs for LCL-problems.
+
+        This command generates bipartite multigraphs of size min_nodes..max_nodes.
+        Then it checks for each problem, if there exists a graph that cannot be labeled within the constraints of the problem.
+        TODO write about SAT problem
+        "})
         .args(&[
             min_nodes,
             max_nodes,
@@ -95,9 +102,9 @@ pub fn build_cli() -> App<'static, 'static> {
         .version("0.3.0")
         .setting(AppSettings::SubcommandRequired)
         .subcommand(subcommand_find)
-        .about("This tool can be used to find lower-bound proofs for LCL-problems.")
+        .about("This tool can be used to find lower bound proofs for LCL-problems.")
         .long_about(indoc! {"
-        This tool can be used to find lower-bound proofs for LCL-problems.
+        This tool can be used to find lower bound proofs for LCL-problems.
 
         TODO
         "})
