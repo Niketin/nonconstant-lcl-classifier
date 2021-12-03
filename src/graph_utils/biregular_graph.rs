@@ -95,7 +95,7 @@ impl BiregularGraph {
     /// Simple graphs are also included in this generators result.
     /// TODO rethink caching and which graph generator functions really need them.
     /// TODO Might bee wasteful to use it with "generate_bipartite_graphs_with_degree_bounds_graph8".
-    pub fn generate_multigraph(graph_size: usize, degree_a: usize, degree_b: usize) -> Vec<Self> {
+    pub fn generate_multigraphs(graph_size: usize, degree_a: usize, degree_b: usize) -> Vec<Self> {
         let max_degree = std::cmp::max(degree_a, degree_b);
         let max_edge_multiplicity = max_degree;
 
@@ -227,10 +227,10 @@ mod tests {
 
     #[test]
     fn test_generating_biregular_graphs_with_parallel_edges() {
-        assert_eq!(BiregularGraph::generate_multigraph(2, 2, 2).len(), 1);
-        assert_eq!(BiregularGraph::generate_multigraph(5, 2, 3).len(), 2);
-        assert_eq!(BiregularGraph::generate_multigraph(7, 3, 4).len(), 9);
-        assert_eq!(BiregularGraph::generate_multigraph(9, 8, 1).len(), 1);
+        assert_eq!(BiregularGraph::generate_multigraphs(2, 2, 2).len(), 1);
+        assert_eq!(BiregularGraph::generate_multigraphs(5, 2, 3).len(), 2);
+        assert_eq!(BiregularGraph::generate_multigraphs(7, 3, 4).len(), 9);
+        assert_eq!(BiregularGraph::generate_multigraphs(9, 8, 1).len(), 1);
     }
 
     #[test]
@@ -282,7 +282,7 @@ mod tests {
         let degree_b = 3;
 
         let simple_graphs = BiregularGraph::generate_simple(graph_size, degree_a, degree_b);
-        let multigraphs = BiregularGraph::generate_multigraph(graph_size, degree_a, degree_b);
+        let multigraphs = BiregularGraph::generate_multigraphs(graph_size, degree_a, degree_b);
 
         for sg in simple_graphs.iter() {
             assert!(multigraphs.iter().any(|mg| graph_eq(&sg.graph, &mg.graph)))
