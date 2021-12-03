@@ -1,13 +1,14 @@
-use clap::{App, AppSettings, Arg, SubCommand};
+use clap::{App, AppSettings::{self, ArgRequiredElseHelp}, Arg, SubCommand};
 use indoc::indoc;
 
 pub fn build_cli() -> App<'static, 'static> {
     let subcommand_find = get_subcommand_find();
+    let subcommand_generate = get_subcommand_generate();
 
     App::new("Thesis tool")
         .version("0.3.0")
-        .setting(AppSettings::SubcommandRequired)
-        .subcommand(subcommand_find)
+        .setting(ArgRequiredElseHelp)
+        .subcommands([subcommand_find, subcommand_generate])
         .about("This tool can be used to find lower bound proofs for LCL-problems")
         .long_about(indoc! {"
         This tool can be used to find lower bound proofs for LCL-problems.
@@ -116,4 +117,39 @@ fn get_subcommand_single() -> App<'static, 'static> {
     SubCommand::with_name("single")
         .about("Runs for a single problem")
         .args(&[active_configurations, passive_configurations])
+}
+
+fn get_subcommand_generate() -> App<'static, 'static> {
+    let subcommand_problems = get_subcommand_problems();
+    let subcommand_graphs = get_subcommand_graphs();
+    SubCommand::with_name("gen")
+        .about("Generate <subcommand> and save into file system")
+        .setting(ArgRequiredElseHelp)
+        .subcommands([subcommand_graphs, subcommand_problems])
+
+}
+
+fn get_subcommand_problems() -> App<'static, 'static> {
+    SubCommand::with_name("problems")
+        .about("TODO")
+        .subcommands([])
+}
+
+fn get_subcommand_graphs() -> App<'static, 'static> {
+    let min_nodes = Arg::with_name("min_nodes")
+        .help("Sets the minimum number of nodes for the generated graphs")
+        .required(true);
+    let max_nodes = Arg::with_name("max_nodes")
+        .help("Sets the maximum number of nodes for the generated graphs")
+        .required(true);
+    let active_degree = Arg::with_name("active_degree")
+        .help("Degree of the active partition")
+        .required(true);
+    let passive_degree = Arg::with_name("passive_degree")
+        .help("Degree of the passive partition")
+        .required(true);
+
+    SubCommand::with_name("graphs")
+        .about("Generate biregular multigraphs and save into file system")
+        .args(&[min_nodes, max_nodes, active_degree, passive_degree])
 }
