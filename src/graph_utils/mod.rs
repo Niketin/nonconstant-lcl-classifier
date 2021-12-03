@@ -65,6 +65,11 @@ fn adjacency_matrix_to_edge_list((adjacency_matrix, size): (Vec<f32>, usize)) ->
     return result;
 }
 
+/// Generates bipartite graphs with degree bounds.
+///
+/// Output is in graph8 format.
+/// Generates only one subset result out of subsets 0..modulo-1.
+/// If all results are required at once, result=0 modulus=0 can be given.
 fn generate_bipartite_graphs_with_degree_bounds_graph8(
     n1: usize,
     n2: usize,
@@ -72,7 +77,10 @@ fn generate_bipartite_graphs_with_degree_bounds_graph8(
     d2_low: usize,
     d1_high: usize,
     d2_high: usize,
+    result: usize,
+    modulo: usize,
 ) -> String {
+    assert!(result <= modulo);
     // Use geng and assume it exists in the system.
     let mut command = Command::new("genbg");
 
@@ -85,7 +93,8 @@ fn generate_bipartite_graphs_with_degree_bounds_graph8(
         .arg(parameter_degree_lower_bound)
         .arg(parameter_degree_upper_bound)
         .arg(n1.to_string())
-        .arg(n2.to_string());
+        .arg(n2.to_string())
+        .arg(format!("{}/{}", result, modulo));
 
     let out = graphs.output().expect("msg");
     String::from_utf8(out.stdout).expect("Not in utf8 format")
@@ -100,7 +109,7 @@ fn generate_biregular_graphs_with_total_size_graph8(
     for (n1, n2) in biregular_partition_sizes(n, d1, d2) {
         graphs.push((
             (n1, n2),
-            generate_bipartite_graphs_with_degree_bounds_graph8(n1, n2, d1, d2, d1, d2),
+            generate_bipartite_graphs_with_degree_bounds_graph8(n1, n2, d1, d2, d1, d2, 0, 0),
         ));
     }
     graphs

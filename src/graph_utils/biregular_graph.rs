@@ -113,6 +113,8 @@ impl BiregularGraph {
                     1,
                     degree_a,
                     degree_b,
+                    0,
+                    0,
                 )
                 .expect("Generating graphs to cache failed.");
             } else {
@@ -197,9 +199,11 @@ impl BiregularGraph {
         d2_low: usize,
         d1_high: usize,
         d2_high: usize,
+        result: usize,
+        modulo: usize,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let graphs = generate_bipartite_graphs_with_degree_bounds_graph8(
-            n1, n2, d1_low, d2_low, d1_high, d2_high,
+            n1, n2, d1_low, d2_low, d1_high, d2_high, result, modulo,
         );
         let mut dir = path.clone();
         dir.pop();
