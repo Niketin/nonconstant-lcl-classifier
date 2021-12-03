@@ -190,6 +190,57 @@ fn extend_to_multigraphs(
     String::from_utf8(out.stdout).expect("Not in utf8 format")
 }
 
+fn generate_bipartite_multigraphs(
+    n1: usize,
+    n2: usize,
+    d1_low: usize,
+    d2_low: usize,
+    d1_high: usize,
+    d2_high: usize,
+    result: usize,
+    modulo: usize,
+    max_edge_multiplicity: usize,
+    edges: usize,
+    max_degree: usize,
+) -> String {
+    assert!(result <= modulo);
+
+    let parameter_degree_lower_bound = format!("-d{}:{}", d1_low, d2_low);
+    let parameter_degree_upper_bound = format!("-D{}:{}", d1_high, d2_high);
+
+    // Use gengbg and assume it exists in the system.
+    // Flag -c gives us connected graphs.
+    let genbg_child = Command::new("genbg")
+        .arg("-c")
+        .arg(parameter_degree_lower_bound)
+        .arg(parameter_degree_upper_bound)
+        .arg(n1.to_string())
+        .arg(n2.to_string())
+        .arg(format!("{}/{}", result, modulo))
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .expect("Failed to start genbg process");
+    let genbg_out = genbg_child.stdout.expect("Failed to open genbg stdout");
+
+    // Use multig and assume it exists in the system.
+    let mut cmd_multig = Command::new("multig");
+
+    let multig_child = cmd_multig
+        .arg(format!("-e{}", edges))
+        .arg(format!("-D{}", max_degree))
+        .arg(format!("-m{}", max_edge_multiplicity))
+        .arg("-T")
+        .stdin(genbg_out);
+
+        //.expect("Failed to start multig process");
+
+    let out = multig_child
+        .output()
+        .expect("Failed to open multig stdout");
+    String::from_utf8(out.stdout).expect("Not in utf8 format")
+}
+
 fn multigraph_string_to_petgraph(
     multigraph_string: String,
 ) -> Result<Vec<UndirectedGraph>, Box<dyn std::error::Error>> {

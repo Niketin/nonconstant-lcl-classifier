@@ -3,13 +3,16 @@ use std::time::Instant;
 
 use super::{
     biregular_partition_sizes, extend_to_multigraphs,
-    generate_bipartite_graphs_with_degree_bounds_graph8, multigraph_string_to_petgraph,
-    partition_is_regular, UndirectedGraph,
+    generate_bipartite_graphs_with_degree_bounds_graph8, generate_bipartite_multigraphs,
+    multigraph_string_to_petgraph, partition_is_regular, UndirectedGraph,
 };
 use super::{generate_biregular_graphs_unzipped_graph8, get_partitions, graph6_to_petgraph};
 use itertools::Itertools;
 use log::debug;
 use petgraph::graph::NodeIndex;
+use std::mem;
+use std::sync::mpsc;
+use std::thread;
 
 /// Container for biregular graph.
 ///
@@ -166,6 +169,79 @@ impl BiregularGraph {
             })
             .collect_vec();
         multigraphs_biregulargraph
+    }
+
+    fn generate_multigraphs_parallel(
+        graph_size: usize,
+        degree_a: usize,
+        degree_b: usize,
+    ) -> Vec<Self> {
+
+        let max_degree = std::cmp::max(degree_a, degree_b);
+        let max_edge_multiplicity = max_degree;
+        let threads = num_cpus::get();
+
+        let (sender, receiver) = mpsc::channel();
+        for i in 0..threads {
+            let sender = sender.clone();
+            thread::spawn(move || {
+                let mut multigraphs: Vec<((usize, usize), String)> = Vec::new();
+
+                for (n1, n2) in biregular_partition_sizes(graph_size, degree_a, degree_b) {
+                    let edges = n1 * degree_a;
+                    let mg = generate_bipartite_multigraphs(
+                        n1,
+                        n2,
+                        1,
+                        1,
+                        degree_a,
+                        degree_b,
+                        i,
+                        threads,
+                        max_edge_multiplicity,
+                        edges,
+                        max_degree,
+                    );
+                    multigraphs.push(((n1, n2), mg));
+                }
+
+                let multigraphs_petgraph =
+                    multigraphs.into_iter().filter_map(|((n1, n2), graphs)| {
+                        if let Ok(gs) = multigraph_string_to_petgraph(graphs) {
+                            return Some(((n1, n2), gs));
+                        }
+                        None
+                    }).collect_vec();
+
+                let multigraphs_biregulargraph = multigraphs_petgraph.into_iter()
+                    .map(|((n1, n2), graphs)| {
+                        graphs
+                            .into_iter()
+                            .map(|graph| {
+                                let partitions = get_partitions(&graph, n1, n2);
+                                (graph, partitions)
+                            })
+                            .collect_vec()
+                    })
+                    .flatten()
+                    .filter(|(g, (p1, p2))| {
+                        partition_is_regular(&g, &p1) && partition_is_regular(&g, &p2)
+                    })
+                    .map(|(graph, (partition_a, partition_b))| Self {
+                        degree_a,
+                        degree_b,
+                        graph,
+                        partition_a,
+                        partition_b,
+                    })
+                    .collect_vec();
+
+                sender.send(multigraphs_biregulargraph).unwrap();
+            });
+        }
+        mem::drop(sender);
+
+        receiver.into_iter().flatten().collect_vec()
     }
 
     fn path_to_bipartite_graphs_cache(

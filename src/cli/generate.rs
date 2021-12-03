@@ -31,8 +31,8 @@ fn generate_graphs(matches_graphs: &ArgMatches) -> Result<(), Box<dyn std::error
         // TODO Thread 2: generate nth part of simple graphs (and cache) -> extend to multigraphs (and cache) -> return them
         // TODO ...
         // TODO Thread n: generate nth part of simple graphs (and cache) -> extend to multigraphs (and cache) -> return them
-        //let graphs = BiregularGraph::get_or_generate_multigraphs_parallel(n, active_degree, passive_degree);
-        let graphs = BiregularGraph::generate_multigraphs(n, active_degree, passive_degree);
+        let graphs = BiregularGraph::get_or_generate_multigraphs_parallel(n, active_degree, passive_degree);
+        //let graphs = BiregularGraph::generate_multigraphs(n, active_degree, passive_degree);
         sum += graphs.len();
         println!();
     }
