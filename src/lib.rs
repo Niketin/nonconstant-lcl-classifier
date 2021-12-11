@@ -2,12 +2,14 @@ mod graph_utils;
 mod lcl_problem;
 mod sat_encoder;
 mod sat_solver;
+pub mod graph_caches;
 
 pub use graph_utils::{save_as_svg, BiregularGraph, DotFormat, UndirectedGraph};
 pub use lcl_problem::configurations::Configurations;
 pub use lcl_problem::LclProblem;
 pub use sat_encoder::SatEncoder;
 pub use sat_solver::{SatResult, SatSolver};
+pub use graph_caches::GraphCache;
 
 #[cfg(test)]
 mod tests {

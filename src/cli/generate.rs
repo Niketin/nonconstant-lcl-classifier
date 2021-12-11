@@ -1,7 +1,10 @@
-use clap::ArgMatches;
-use clap::{value_t_or_exit};
-use thesis_tool_lib::BiregularGraph;
+use std::path::PathBuf;
+use std::str::FromStr;
 
+use clap::value_t_or_exit;
+use clap::ArgMatches;
+use thesis_tool_lib::graph_caches::multigraph_cache::SqliteCacheHandler;
+use thesis_tool_lib::{graph_caches, BiregularGraph};
 
 pub fn generate(matches_generate: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(matches_graphs) = matches_generate.subcommand_matches("graphs") {
@@ -22,19 +25,26 @@ fn generate_graphs(matches_graphs: &ArgMatches) -> Result<(), Box<dyn std::error
     let max_nodes = value_t_or_exit!(matches_graphs, "max_nodes", usize);
     let active_degree = value_t_or_exit!(matches_graphs, "active_degree", usize);
     let passive_degree = value_t_or_exit!(matches_graphs, "passive_degree", usize);
+    let sqlite_cache_path = matches_graphs.value_of("sqlite_cache");
+
+    let mut cache = if sqlite_cache_path.is_some() {
+        Some(SqliteCacheHandler::new(
+            PathBuf::from_str(sqlite_cache_path.unwrap())
+                .expect("Database at the given path does not exist"),
+        ))
+    } else {
+        None
+    };
 
     let mut sum = 0usize;
     for n in min_nodes..=max_nodes {
-        // TODO do this in parallel by modifying underlying functions as you see fit.
-        // TODO Probably this way:
-        // TODO Thread 1: generate nth part of simple graphs (and cache) -> extend to multigraphs (and cache) -> return them
-        // TODO Thread 2: generate nth part of simple graphs (and cache) -> extend to multigraphs (and cache) -> return them
-        // TODO ...
-        // TODO Thread n: generate nth part of simple graphs (and cache) -> extend to multigraphs (and cache) -> return them
-        let graphs = BiregularGraph::get_or_generate_multigraphs_parallel(n, active_degree, passive_degree);
-        //let graphs = BiregularGraph::generate_multigraphs(n, active_degree, passive_degree);
+        let graphs = BiregularGraph::get_or_generate_multigraphs_parallel(
+            n,
+            active_degree,
+            passive_degree,
+            cache.as_mut(),
+        );
         sum += graphs.len();
-        println!();
     }
     eprintln!("Generated {} multigraphs!", sum);
 
