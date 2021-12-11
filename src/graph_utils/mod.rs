@@ -1,9 +1,7 @@
 mod biregular_graph;
 mod dot_format;
 
-use graph6::string_to_adjacency_matrix;
 use itertools::Itertools;
-
 use petgraph::{graph::NodeIndex, Graph, Undirected};
 use std::io::prelude::*;
 use std::path::PathBuf;
@@ -13,12 +11,6 @@ pub use biregular_graph::BiregularGraph;
 pub use dot_format::DotFormat;
 
 pub type UndirectedGraph = Graph<u32, (), Undirected>;
-
-fn graph6_to_petgraph(graph: &str) -> UndirectedGraph {
-    let adjacency_matrix = string_to_adjacency_matrix(graph);
-    let edges = adjacency_matrix_to_edge_list(adjacency_matrix);
-    petgraph::graph::UnGraph::from_edges(&edges)
-}
 
 /// Writes dot formatted graph into svg file.
 pub fn save_as_svg(path: &str, dot: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -233,11 +225,9 @@ fn generate_bipartite_multigraphs(
         .arg("-T")
         .stdin(genbg_out);
 
-        //.expect("Failed to start multig process");
+    //.expect("Failed to start multig process");
 
-    let out = multig_child
-        .output()
-        .expect("Failed to open multig stdout");
+    let out = multig_child.output().expect("Failed to open multig stdout");
     String::from_utf8(out.stdout).expect("Not in utf8 format")
 }
 

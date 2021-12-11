@@ -148,8 +148,19 @@ fn get_subcommand_graphs() -> App<'static, 'static> {
     let passive_degree = Arg::with_name("passive_degree")
         .help("Degree of the passive partition")
         .required(true);
+    let sqlite_cache = Arg::with_name("sqlite_cache")
+        //.help("Path to an sqlite database that will be used as a graph cache")
+        .long_help(indoc!{"
+            Path to an sqlite database that will be used as a graph cache.
 
+            This means that if the graphs already exist in the database,
+            the graphs are retrieved from there.
+        "})
+        .takes_value(true)
+        .value_name("path")
+        .short("c")
+        .long("sqlite-cache");
     SubCommand::with_name("graphs")
         .about("Generate biregular multigraphs and save into file system")
-        .args(&[min_nodes, max_nodes, active_degree, passive_degree])
+        .args(&[min_nodes, max_nodes, active_degree, passive_degree, sqlite_cache])
 }
