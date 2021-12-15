@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use crate::BiregularGraph;
 
 pub mod multigraph_cache;
-pub mod simple_graph_cache;
 
 pub trait GraphCache {
     fn read_graphs(

@@ -26,7 +26,7 @@ mod tests {
         let deg_a = lcl_problem.active.get_labels_per_configuration();
         let deg_p = lcl_problem.passive.get_labels_per_configuration();
 
-        let graphs = BiregularGraph::generate_multigraphs(n, deg_a, deg_p);
+        let graphs = BiregularGraph::generate_multigraphs_parallel(n, deg_a, deg_p);
 
         assert!(!graphs.is_empty());
 
@@ -50,7 +50,7 @@ mod tests {
         let deg_a = lcl_problem.active.get_labels_per_configuration();
         let deg_p = lcl_problem.passive.get_labels_per_configuration();
 
-        let graphs = BiregularGraph::generate_multigraphs(n, deg_a, deg_p);
+        let graphs = BiregularGraph::generate_multigraphs_parallel(n, deg_a, deg_p);
 
         assert!(!graphs.is_empty());
         graphs.into_iter().for_each(|graph| {
@@ -75,7 +75,7 @@ mod tests {
         let deg_p = lcl_problem.passive.get_labels_per_configuration();
 
         let graphs_grouped =
-            (n_min..=n_max).map(|n| BiregularGraph::generate_multigraphs(n, deg_a, deg_p));
+            (n_min..=n_max).map(|n| BiregularGraph::generate_multigraphs_parallel(n, deg_a, deg_p));
 
         let results_grouped = graphs_grouped
             .into_iter()
@@ -113,7 +113,7 @@ mod tests {
         let deg_a = lcl_problem.active.get_labels_per_configuration();
         let deg_p = lcl_problem.passive.get_labels_per_configuration();
 
-        let graphs = BiregularGraph::generate_multigraphs(n, deg_a, deg_p);
+        let graphs = BiregularGraph::generate_multigraphs_parallel(n, deg_a, deg_p);
 
         assert!(!graphs.is_empty());
 

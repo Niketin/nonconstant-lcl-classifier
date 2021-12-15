@@ -4,7 +4,6 @@ mod dot_format;
 use itertools::Itertools;
 use petgraph::{graph::NodeIndex, Graph, Undirected};
 use std::io::prelude::*;
-use std::path::PathBuf;
 use std::{fs::File, process::Command, process::Stdio};
 
 pub use biregular_graph::BiregularGraph;
@@ -38,84 +37,6 @@ pub fn save_as_svg(path: &str, dot: &str) -> Result<(), Box<dyn std::error::Erro
     file.write_all(s.as_bytes())?;
 
     Ok(())
-}
-
-/// Transforms adjacency matrix into list of edges.
-fn adjacency_matrix_to_edge_list((adjacency_matrix, size): (Vec<f32>, usize)) -> Vec<(u32, u32)> {
-    let mut result: Vec<(u32, u32)> = Vec::new();
-
-    // Iterate upper triangle of the adjacency matrix
-    for row in 0..size {
-        for col in row..size {
-            let value = adjacency_matrix.get(row * size + col).unwrap();
-            if value.to_ne_bytes() == 1.0f32.to_ne_bytes() {
-                result.push((col as u32, row as u32));
-            }
-        }
-    }
-
-    return result;
-}
-
-/// Generates bipartite graphs with degree bounds.
-///
-/// Output is in graph8 format.
-/// Generates only one subset result out of subsets 0..modulo-1.
-/// If all results are required at once, result=0 modulus=0 can be given.
-fn generate_bipartite_graphs_with_degree_bounds_graph8(
-    n1: usize,
-    n2: usize,
-    d1_low: usize,
-    d2_low: usize,
-    d1_high: usize,
-    d2_high: usize,
-    result: usize,
-    modulo: usize,
-) -> String {
-    assert!(result <= modulo);
-    // Use geng and assume it exists in the system.
-    let mut command = Command::new("genbg");
-
-    let parameter_degree_lower_bound = format!("-d{}:{}", d1_low, d2_low);
-    let parameter_degree_upper_bound = format!("-D{}:{}", d1_high, d2_high);
-
-    // Flag -c gives us connected graphs.
-    let graphs = command
-        .arg("-c")
-        .arg(parameter_degree_lower_bound)
-        .arg(parameter_degree_upper_bound)
-        .arg(n1.to_string())
-        .arg(n2.to_string())
-        .arg(format!("{}/{}", result, modulo));
-
-    let out = graphs.output().expect("msg");
-    String::from_utf8(out.stdout).expect("Not in utf8 format")
-}
-
-fn generate_biregular_graphs_with_total_size_graph8(
-    n: usize,
-    d1: usize,
-    d2: usize,
-) -> Vec<((usize, usize), String)> {
-    let mut graphs = Vec::new();
-    for (n1, n2) in biregular_partition_sizes(n, d1, d2) {
-        graphs.push((
-            (n1, n2),
-            generate_bipartite_graphs_with_degree_bounds_graph8(n1, n2, d1, d2, d1, d2, 0, 0),
-        ));
-    }
-    graphs
-}
-
-fn generate_biregular_graphs_unzipped_graph8(
-    graph_size: usize,
-    degree_a: usize,
-    degree_b: usize,
-) -> (Vec<(usize, usize)>, Vec<String>) {
-    generate_biregular_graphs_with_total_size_graph8(graph_size, degree_a, degree_b)
-        .iter()
-        .cloned()
-        .unzip()
 }
 
 /// Returns all positive integer pairs that sum up to `sum`.
@@ -159,27 +80,6 @@ fn get_partitions(
         .collect_vec();
 
     (node_indices_a, node_indices_p)
-}
-
-/// Extends given underlying graphs to all possible multigraphs.
-fn extend_to_multigraphs(
-    input_path: &PathBuf,
-    max_edge_multiplicity: usize,
-    edges: usize,
-    max_degree: usize,
-) -> String {
-    // Use multig and assume it exists in the system.
-    let mut command = Command::new("multig");
-
-    command
-        .arg(format!("-e{}", edges))
-        .arg(format!("-D{}", max_degree))
-        .arg(format!("-m{}", max_edge_multiplicity))
-        .arg("-T")
-        .arg(input_path);
-
-    let out = command.output().expect("msg");
-    String::from_utf8(out.stdout).expect("Not in utf8 format")
 }
 
 fn generate_bipartite_multigraphs(
