@@ -1,14 +1,23 @@
-use clap::{App, AppSettings::{self, ArgRequiredElseHelp}, Arg, SubCommand};
+use clap::{
+    App,
+    AppSettings::{self, ArgRequiredElseHelp},
+    Arg, SubCommand,
+};
 use indoc::indoc;
 
 pub fn build_cli() -> App<'static, 'static> {
     let subcommand_find = get_subcommand_find();
     let subcommand_generate = get_subcommand_generate();
+    let subcommand_create_cache = get_subcommand_create_sql_cache(); //TODO add the functionality behind this command
 
     App::new("Thesis tool")
         .version("0.3.0")
         .setting(ArgRequiredElseHelp)
-        .subcommands([subcommand_find, subcommand_generate])
+        .subcommands([
+            subcommand_find,
+            subcommand_generate,
+            subcommand_create_cache,
+        ])
         .about("This tool can be used to find lower bound proofs for LCL-problems")
         .long_about(indoc! {"
         This tool can be used to find lower bound proofs for LCL-problems.
@@ -126,7 +135,6 @@ fn get_subcommand_generate() -> App<'static, 'static> {
         .about("Generate <subcommand> and save into file system")
         .setting(ArgRequiredElseHelp)
         .subcommands([subcommand_graphs, subcommand_problems])
-
 }
 
 fn get_subcommand_problems() -> App<'static, 'static> {
@@ -149,8 +157,8 @@ fn get_subcommand_graphs() -> App<'static, 'static> {
         .help("Degree of the passive partition")
         .required(true);
     let sqlite_cache = Arg::with_name("sqlite_cache")
-        //.help("Path to an sqlite database that will be used as a graph cache")
-        .long_help(indoc!{"
+        .help("Path to an sqlite database that will be used as a graph cache")
+        .long_help(indoc! {"
             Path to an sqlite database that will be used as a graph cache.
 
             This means that if the graphs already exist in the database,
@@ -162,5 +170,28 @@ fn get_subcommand_graphs() -> App<'static, 'static> {
         .long("sqlite-cache");
     SubCommand::with_name("graphs")
         .about("Generate biregular multigraphs and save into file system")
-        .args(&[min_nodes, max_nodes, active_degree, passive_degree, sqlite_cache])
+        .args(&[
+            min_nodes,
+            max_nodes,
+            active_degree,
+            passive_degree,
+            sqlite_cache,
+        ])
+}
+
+fn get_subcommand_create_sql_cache() -> App<'static, 'static> {
+    let sqlite_cache = Arg::with_name("sqlite_cache")
+        .help("Path to an sqlite database that will be used as a graph cache")
+        .long_help(indoc! {"
+            Path to an sqlite database that will be created.
+
+            This means that if the graphs already exist in the database,
+            the graphs are retrieved from there.
+        "})
+        .takes_value(true)
+        .value_name("path")
+        .required(true);
+    SubCommand::with_name("create_cache")
+        .about("Generate SQLite database for caching")
+        .args(&[sqlite_cache])
 }
