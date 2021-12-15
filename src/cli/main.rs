@@ -1,10 +1,12 @@
 mod app;
 mod find;
 mod generate;
+mod create_cache;
 
 use app::build_cli;
 use find::find;
 use generate::generate;
+use create_cache::create_cache;
 
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -12,12 +14,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let matches = build_cli().get_matches();
 
-    if let Some(matches_find) = matches.subcommand_matches("find") {
-        find(matches_find)?
-    }
-
-    if let Some(matches_generate) = matches.subcommand_matches("gen") {
-        generate(matches_generate)?
+    match matches.subcommand() {
+        ("find", Some(sub_m)) => find(sub_m)?,
+        ("gen", Some(sub_m)) => generate(sub_m)?,
+        ("create_cache", Some(sub_m)) => create_cache(sub_m)?,
+        (_, _) => unreachable!()
     }
 
     Ok(())

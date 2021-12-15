@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use rusqlite::{params, Connection, Result};
+use rusqlite::{params, Connection, Result, DatabaseName::Main};
 
 use crate::BiregularGraph;
 
@@ -66,6 +66,22 @@ impl SqliteCacheHandler {
     fn open_connection(path: &PathBuf) -> Result<Connection> {
         Connection::open(path.as_path())
     }
+}
+
+pub fn create_database(path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let db = rusqlite::Connection::open_in_memory()?;
+    db.execute(
+        "CREATE TABLE class (
+                nodes           INTEGER NOT NULL,
+                deg_a           INTEGER NOT NULL,
+                deg_p           INTEGER NOT NULL,
+                data            BLOB,
+                CONSTRAINT class_pk PRIMARY KEY (nodes, deg_a, deg_p)
+            );",
+        [],
+    )?;
+    db.backup(Main, path, None)?;
+    Ok(())
 }
 
 #[cfg(test)]
