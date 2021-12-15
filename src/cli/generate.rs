@@ -1,5 +1,6 @@
 use clap::value_t_or_exit;
 use clap::ArgMatches;
+use thesis_tool_lib::LclProblem;
 use std::path::PathBuf;
 use std::str::FromStr;
 use thesis_tool_lib::graph_caches::multigraph_cache::SqliteCacheHandler;
@@ -15,8 +16,16 @@ pub fn generate(matches_generate: &ArgMatches) -> Result<(), Box<dyn std::error:
     Ok(())
 }
 
-fn generate_problems(_matches_problems: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
-    todo!()
+fn generate_problems(matches_problems: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
+    let active_degree = value_t_or_exit!(matches_problems, "active_degree", usize);
+    let passive_degree = value_t_or_exit!(matches_problems, "passive_degree", usize);
+    let label_count = value_t_or_exit!(matches_problems, "label_count", usize);
+    let _sqlite_cache_path = matches_problems.value_of("sqlite_cache");
+    let problems = LclProblem::generate_normalized(active_degree, passive_degree, label_count as u8);
+    for problem in problems {
+        println!("{}", problem.to_string());
+    }
+    Ok(())
 }
 
 fn generate_graphs(matches_graphs: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {

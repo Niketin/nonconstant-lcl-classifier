@@ -138,9 +138,38 @@ fn get_subcommand_generate() -> App<'static, 'static> {
 }
 
 fn get_subcommand_problems() -> App<'static, 'static> {
+    let active_degree = Arg::with_name("active_degree")
+        .help("Degree of the active partition")
+        .takes_value(true)
+        .required(true);
+    let passive_degree = Arg::with_name("passive_degree")
+        .help("Degree of the passive partition")
+        .takes_value(true)
+        .required(true);
+    let label_count = Arg::with_name("label_count")
+        .help("Count of the labels used in the problems")
+        .takes_value(true)
+        .required(true);
+    let sqlite_cache = Arg::with_name("sqlite_cache")
+        .help("Path to an sqlite database that will be used as an LCL problem cache")
+        .long_help(indoc! {"
+        Path to an sqlite database that will be used as an LCL problem cache.
+
+        This means that if the class of LCL problems already exist in the database,
+        the problems are retrieved from there."})
+        .takes_value(true)
+        .value_name("path")
+        .short("c")
+        .long("sqlite-cache");
+
     SubCommand::with_name("problems")
-        .about("TODO")
-        .subcommands([])
+        .about("Generate LCL problems")
+        .args(&[
+            active_degree,
+            passive_degree,
+            label_count,
+            sqlite_cache,
+        ])
 }
 
 fn get_subcommand_graphs() -> App<'static, 'static> {
