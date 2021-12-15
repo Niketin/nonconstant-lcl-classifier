@@ -100,7 +100,7 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
     for n in n_lower..=n_upper {
         // Generate biregular graphs.
         let now = Instant::now();
-        let graphs_n = BiregularGraph::generate_multigraphs(n, deg_a, deg_p);
+        let graphs_n = BiregularGraph::generate_multigraphs_parallel(n, deg_a, deg_p);
         info!(
             "Generated {} nonisomorphic biregular graphs in {} s",
             graphs_n.len(),

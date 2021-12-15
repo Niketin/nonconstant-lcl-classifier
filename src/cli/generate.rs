@@ -4,7 +4,7 @@ use std::str::FromStr;
 use clap::value_t_or_exit;
 use clap::ArgMatches;
 use thesis_tool_lib::graph_caches::multigraph_cache::SqliteCacheHandler;
-use thesis_tool_lib::{graph_caches, BiregularGraph};
+use thesis_tool_lib::{BiregularGraph};
 
 pub fn generate(matches_generate: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(matches_graphs) = matches_generate.subcommand_matches("graphs") {
@@ -16,7 +16,7 @@ pub fn generate(matches_generate: &ArgMatches) -> Result<(), Box<dyn std::error:
     Ok(())
 }
 
-fn generate_problems(matches_problems: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
+fn generate_problems(_matches_problems: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     todo!()
 }
 

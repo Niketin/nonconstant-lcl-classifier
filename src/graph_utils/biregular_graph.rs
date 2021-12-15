@@ -1,16 +1,13 @@
-use std::path::PathBuf;
 
 use crate::GraphCache;
 
 use super::get_partitions;
 use super::{
-    biregular_partition_sizes, extend_to_multigraphs,
-    generate_bipartite_graphs_with_degree_bounds_graph8, generate_bipartite_multigraphs,
+    biregular_partition_sizes, generate_bipartite_multigraphs,
     multigraph_string_to_petgraph, partition_is_regular, UndirectedGraph,
 };
 //use crate::GraphCache;
 use itertools::Itertools;
-use log::debug;
 use petgraph::graph::NodeIndex;
 use serde::{Deserialize, Serialize};
 use std::mem;
@@ -34,86 +31,6 @@ pub struct BiregularGraph {
 }
 
 impl BiregularGraph {
-    /// Generates nonisomorphic biregular graphs with parallel edges.
-    ///
-    /// Immediate results are cached into filesystem.
-    /// The immediate results are the underlying bipartite graphs before extending them to multigraphs.
-    ///
-    /// Simple graphs are also included in this generators result.
-    /// TODO rethink caching and which graph generator functions really need them.
-    /// TODO Might bee wasteful to use it with "generate_bipartite_graphs_with_degree_bounds_graph8".
-    pub fn generate_multigraphs(graph_size: usize, degree_a: usize, degree_b: usize) -> Vec<Self> {
-        let max_degree = std::cmp::max(degree_a, degree_b);
-        let max_edge_multiplicity = max_degree;
-
-        let mut multigraphs = Vec::new();
-        for (n1, n2) in biregular_partition_sizes(graph_size, degree_a, degree_b) {
-            let path_to_graphs_in_cache =
-                BiregularGraph::path_to_bipartite_graphs_cache(n1, n2, 1, 1, degree_a, degree_b);
-            if !path_to_graphs_in_cache.exists() {
-                BiregularGraph::generate_bipartite_graphs_to_cache(
-                    &path_to_graphs_in_cache,
-                    n1,
-                    n2,
-                    1,
-                    1,
-                    degree_a,
-                    degree_b,
-                    0,
-                    0,
-                )
-                .expect("Generating graphs to cache failed.");
-            } else {
-                debug!(
-                    "Found bipartite graph from cache! n1: {}, n2: {}, d1=[1...{}], d2=[1...{}]",
-                    n1, n2, degree_a, degree_b
-                )
-            }
-
-            let edges = n1 * degree_a;
-            let mg = extend_to_multigraphs(
-                &path_to_graphs_in_cache,
-                max_edge_multiplicity,
-                edges,
-                max_degree,
-            );
-            multigraphs.push(((n1, n2), mg));
-        }
-
-        let multigraphs_petgraph = multigraphs
-            .into_iter()
-            .filter_map(|((n1, n2), graphs)| {
-                if let Ok(gs) = multigraph_string_to_petgraph(graphs) {
-                    return Some(((n1, n2), gs));
-                }
-                None
-            })
-            .collect_vec();
-
-        let multigraphs_biregulargraph = multigraphs_petgraph
-            .into_iter()
-            .map(|((n1, n2), graphs)| {
-                graphs
-                    .into_iter()
-                    .map(|graph| {
-                        let partitions = get_partitions(&graph, n1, n2);
-                        (graph, partitions)
-                    })
-                    .collect_vec()
-            })
-            .flatten()
-            .filter(|(g, (p1, p2))| partition_is_regular(&g, &p1) && partition_is_regular(&g, &p2))
-            .map(|(graph, (partition_a, partition_b))| Self {
-                degree_a,
-                degree_b,
-                graph,
-                partition_a,
-                partition_b,
-            })
-            .collect_vec();
-        multigraphs_biregulargraph
-    }
-
     /// Parallelly generates nonisomorphic biregular graphs with parallel edges.
     ///
     /// Graph generation is divided into multiple threads.
@@ -152,7 +69,7 @@ impl BiregularGraph {
         multigraphs
     }
 
-    fn generate_multigraphs_parallel(
+    pub fn generate_multigraphs_parallel(
         graph_size: usize,
         degree_a: usize,
         degree_b: usize,
@@ -226,79 +143,6 @@ impl BiregularGraph {
 
         receiver.into_iter().flatten().collect_vec()
     }
-
-    fn path_to_bipartite_graphs_cache(
-        n1: usize,
-        n2: usize,
-        d1_low: usize,
-        d2_low: usize,
-        d1_high: usize,
-        d2_high: usize,
-    ) -> PathBuf {
-        let graph_cache_directory = "thesis_tool_graph_cache/multi";
-        let mut path = dirs::home_dir().expect("User is expected to have a home directory.");
-
-        path.push(graph_cache_directory);
-
-        let graph_size_class = format!("{}_{}", n1, n2);
-        path.push(graph_size_class);
-
-        let file_name = format!("{}_{}_{}_{}", d1_low, d2_low, d1_high, d2_high);
-        path.push(file_name);
-        path.set_extension("dat");
-
-        path
-    }
-
-    fn path_to_bipartite_graphs_tmp(
-        n1: usize,
-        n2: usize,
-        d1_low: usize,
-        d2_low: usize,
-        d1_high: usize,
-        d2_high: usize,
-        result: usize,
-        modulo: usize,
-    ) -> PathBuf {
-        assert!(result <= modulo);
-
-        let mut path = PathBuf::new();
-        path.push("/tmp");
-
-        let graph_size_class = format!("{}_{}", n1, n2);
-        path.push(graph_size_class);
-
-        let file_name = format!(
-            "{}_{}_{}_{}_{}_{}",
-            d1_low, d2_low, d1_high, d2_high, result, modulo
-        );
-        path.push(file_name);
-        path.set_extension("dat");
-
-        path
-    }
-
-    fn generate_bipartite_graphs_to_cache(
-        path: &PathBuf,
-        n1: usize,
-        n2: usize,
-        d1_low: usize,
-        d2_low: usize,
-        d1_high: usize,
-        d2_high: usize,
-        result: usize,
-        modulo: usize,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let graphs = generate_bipartite_graphs_with_degree_bounds_graph8(
-            n1, n2, d1_low, d2_low, d1_high, d2_high, result, modulo,
-        );
-        let mut dir = path.clone();
-        dir.pop();
-        std::fs::create_dir_all(dir)?;
-        std::fs::write(path, &graphs)?;
-
-        Ok(())
-    }
 }
 
 #[cfg(test)]
@@ -307,15 +151,15 @@ mod tests {
 
     #[test]
     fn test_generating_biregular_graphs_with_parallel_edges() {
-        assert_eq!(BiregularGraph::generate_multigraphs(2, 2, 2).len(), 1);
-        assert_eq!(BiregularGraph::generate_multigraphs(5, 2, 3).len(), 2);
-        assert_eq!(BiregularGraph::generate_multigraphs(7, 3, 4).len(), 9);
-        assert_eq!(BiregularGraph::generate_multigraphs(9, 8, 1).len(), 1);
+        assert_eq!(BiregularGraph::generate_multigraphs_parallel(2, 2, 2).len(), 1);
+        assert_eq!(BiregularGraph::generate_multigraphs_parallel(5, 2, 3).len(), 2);
+        assert_eq!(BiregularGraph::generate_multigraphs_parallel(7, 3, 4).len(), 9);
+        assert_eq!(BiregularGraph::generate_multigraphs_parallel(9, 8, 1).len(), 1);
     }
 
     #[test]
     fn test_biregular_graph_partitions_have_correct_degrees() {
-        let graphs = BiregularGraph::generate_multigraphs(5, 3, 2);
+        let graphs = BiregularGraph::generate_multigraphs_parallel(5, 3, 2);
 
         for graph in graphs {
             assert_eq!(graph.degree_a, 3);
@@ -331,7 +175,7 @@ mod tests {
     }
 
     /// The idea is from: https://github.com/petgraph/petgraph/issues/199#issuecomment-484077775
-    fn graph_eq<N, E, Ty, Ix>(
+    fn _graph_eq<N, E, Ty, Ix>(
         a: &petgraph::Graph<N, E, Ty, Ix>,
         b: &petgraph::Graph<N, E, Ty, Ix>,
     ) -> bool
