@@ -1,10 +1,7 @@
-use std::path::PathBuf;
-
-use rusqlite::{params, Connection, Result, DatabaseName::Main};
-
-use crate::BiregularGraph;
-
 use super::GraphCache;
+use crate::BiregularGraph;
+use rusqlite::{params, Connection, DatabaseName::Main, Result};
+use std::path::PathBuf;
 
 pub struct SqliteCacheHandler {
     db: Connection,
@@ -106,7 +103,7 @@ mod tests {
         let n = 10;
         let active_degree = 3;
         let passive_degree = 3;
-        let graphs = BiregularGraph::get_or_generate_multigraphs_parallel::<SqliteCacheHandler>(
+        let graphs = BiregularGraph::get_or_generate::<SqliteCacheHandler>(
             n,
             active_degree,
             passive_degree,

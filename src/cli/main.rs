@@ -1,13 +1,12 @@
 mod app;
+mod create_cache;
 mod find;
 mod generate;
-mod create_cache;
 
 use app::build_cli;
+use create_cache::create_cache;
 use find::find;
 use generate::generate;
-use create_cache::create_cache;
-
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
@@ -18,7 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ("find", Some(sub_m)) => find(sub_m)?,
         ("gen", Some(sub_m)) => generate(sub_m)?,
         ("create_cache", Some(sub_m)) => create_cache(sub_m)?,
-        (_, _) => unreachable!()
+        (_, _) => unreachable!(),
     }
 
     Ok(())

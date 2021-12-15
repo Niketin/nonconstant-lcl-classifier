@@ -1,6 +1,5 @@
-use picorust::picosat;
-
 use crate::sat_encoder::Clauses;
+use picorust::picosat;
 
 /// Enumerator for SAT solver's result.
 #[derive(Debug, PartialEq)]

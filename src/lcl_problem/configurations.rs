@@ -1,11 +1,10 @@
+use itertools::Itertools;
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
     error::Error,
     iter::FromIterator,
 };
-
-use itertools::Itertools;
 
 /// A container for set of configurations that are used to define an LCL problem.
 ///

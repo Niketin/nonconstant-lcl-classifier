@@ -1,8 +1,7 @@
-use std::path::PathBuf;
+pub mod multigraph_cache;
 
 use crate::BiregularGraph;
-
-pub mod multigraph_cache;
+use std::path::PathBuf;
 
 pub trait GraphCache {
     fn read_graphs(

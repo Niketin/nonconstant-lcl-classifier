@@ -1,10 +1,9 @@
-use std::path::PathBuf;
-use std::str::FromStr;
-
 use clap::value_t_or_exit;
 use clap::ArgMatches;
+use std::path::PathBuf;
+use std::str::FromStr;
 use thesis_tool_lib::graph_caches::multigraph_cache::SqliteCacheHandler;
-use thesis_tool_lib::{BiregularGraph};
+use thesis_tool_lib::BiregularGraph;
 
 pub fn generate(matches_generate: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(matches_graphs) = matches_generate.subcommand_matches("graphs") {
@@ -38,12 +37,8 @@ fn generate_graphs(matches_graphs: &ArgMatches) -> Result<(), Box<dyn std::error
 
     let mut sum = 0usize;
     for n in min_nodes..=max_nodes {
-        let graphs = BiregularGraph::get_or_generate_multigraphs_parallel(
-            n,
-            active_degree,
-            passive_degree,
-            cache.as_mut(),
-        );
+        let graphs =
+            BiregularGraph::get_or_generate(n, active_degree, passive_degree, cache.as_mut());
         sum += graphs.len();
     }
     eprintln!("Generated {} multigraphs!", sum);

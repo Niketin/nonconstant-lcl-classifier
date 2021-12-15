@@ -1,13 +1,12 @@
 mod biregular_graph;
 mod dot_format;
 
+pub use biregular_graph::BiregularGraph;
+pub use dot_format::DotFormat;
 use itertools::Itertools;
 use petgraph::{graph::NodeIndex, Graph, Undirected};
 use std::io::prelude::*;
 use std::{fs::File, process::Command, process::Stdio};
-
-pub use biregular_graph::BiregularGraph;
-pub use dot_format::DotFormat;
 
 pub type UndirectedGraph = Graph<u32, (), Undirected>;
 
@@ -63,6 +62,11 @@ fn biregular_partition_sizes(n: usize, d1: usize, d2: usize) -> Vec<(usize, usiz
         .collect_vec()
 }
 
+/// Returns the partitions of a bipartite graph.
+///
+/// Assumes that the graph is bipartite and nodes are ordered by the partition
+/// i.e. partition_A contains nodes 0..n1-1 (inclusive)
+/// and partition_B contains nodes n1..n1+n2-1 (inclusive).
 fn get_partitions(
     graph: &UndirectedGraph,
     n1: usize,
@@ -101,7 +105,7 @@ fn generate_bipartite_multigraphs(
     let parameter_degree_upper_bound = format!("-D{}:{}", d1_high, d2_high);
 
     // Use gengbg and assume it exists in the system.
-    // Flag -c gives us connected graphs.
+    // Flag -c limits the output to connected graphs.
     let genbg_child = Command::new("genbg")
         .arg("-c")
         .arg(parameter_degree_lower_bound)

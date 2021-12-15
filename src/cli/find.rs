@@ -1,11 +1,10 @@
-use clap::{ArgMatches, value_t_or_exit};
+use clap::{value_t_or_exit, ArgMatches};
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
 use log::info;
 use std::time::Instant;
 use thesis_tool_lib::*;
-
 
 pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     let verbosity = matches_find.occurrences_of("verbosity");
@@ -100,7 +99,7 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
     for n in n_lower..=n_upper {
         // Generate biregular graphs.
         let now = Instant::now();
-        let graphs_n = BiregularGraph::generate_multigraphs_parallel(n, deg_a, deg_p);
+        let graphs_n = BiregularGraph::generate(n, deg_a, deg_p);
         info!(
             "Generated {} nonisomorphic biregular graphs in {} s",
             graphs_n.len(),
