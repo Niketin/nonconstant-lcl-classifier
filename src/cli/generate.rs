@@ -1,10 +1,11 @@
 use clap::value_t_or_exit;
 use clap::ArgMatches;
-use thesis_tool_lib::LclProblem;
 use std::path::PathBuf;
 use std::str::FromStr;
-use thesis_tool_lib::graph_caches::multigraph_cache::SqliteCacheHandler;
+use thesis_tool_lib::caches::graph::multigraph_cache::SqliteCacheHandler as multigraph_sqlite_cache;
+use thesis_tool_lib::caches::lcl_problem::lcl_problem_cache::SqliteCacheHandler as lcl_problem_sqlite_cache;
 use thesis_tool_lib::BiregularGraph;
+use thesis_tool_lib::LclProblem;
 
 pub fn generate(matches_generate: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(matches_graphs) = matches_generate.subcommand_matches("graphs") {
@@ -20,8 +21,24 @@ fn generate_problems(matches_problems: &ArgMatches) -> Result<(), Box<dyn std::e
     let active_degree = value_t_or_exit!(matches_problems, "active_degree", usize);
     let passive_degree = value_t_or_exit!(matches_problems, "passive_degree", usize);
     let label_count = value_t_or_exit!(matches_problems, "label_count", usize);
-    let _sqlite_cache_path = matches_problems.value_of("sqlite_cache");
-    let problems = LclProblem::generate_normalized(active_degree, passive_degree, label_count as u8);
+    let sqlite_cache_path = matches_problems.value_of("sqlite_cache");
+
+    let mut cache = if sqlite_cache_path.is_some() {
+        Some(lcl_problem_sqlite_cache::new(
+            PathBuf::from_str(sqlite_cache_path.unwrap())
+                .expect("Database at the given path does not exist"),
+        ))
+    } else {
+        None
+    };
+
+    let problems = LclProblem::get_or_generate_normalized(
+        active_degree,
+        passive_degree,
+        label_count as u8,
+        cache.as_mut(),
+    );
+
     for problem in problems {
         println!("{}", problem.to_string());
     }
@@ -36,7 +53,7 @@ fn generate_graphs(matches_graphs: &ArgMatches) -> Result<(), Box<dyn std::error
     let sqlite_cache_path = matches_graphs.value_of("sqlite_cache");
 
     let mut cache = if sqlite_cache_path.is_some() {
-        Some(SqliteCacheHandler::new(
+        Some(multigraph_sqlite_cache::new(
             PathBuf::from_str(sqlite_cache_path.unwrap())
                 .expect("Database at the given path does not exist"),
         ))

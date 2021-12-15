@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
@@ -13,7 +14,7 @@ use std::{
 ///
 /// Contained configurations can be accessed with different methods.
 /// It is also possible to access all unique permutations of each configuration with [`Configurations::get_permutations`].
-#[derive(Debug, Clone, Eq, Ord, Hash)]
+#[derive(Debug, Clone, Eq, Ord, Hash, Serialize, Deserialize)]
 pub struct Configurations {
     data: Vec<Vec<u8>>,
 }

@@ -2,6 +2,8 @@ pub mod configurations;
 
 use configurations::Configurations;
 use itertools::Itertools;
+use log::{info, error};
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     collections::HashMap,
@@ -11,10 +13,12 @@ use std::{
     path::PathBuf,
 };
 
+use crate::caches::lcl_problem::LclProblemCache;
+
 /// Locally Checkable Labeling problem for biregular graphs.
 ///
 /// Contains configurations for active nodes and passive nodes.
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone, Eq, Serialize, Deserialize)]
 pub struct LclProblem {
     pub active: Configurations,
     pub passive: Configurations,
@@ -100,11 +104,15 @@ impl LclProblem {
     /// Uses `Self::purge` for each generated problem and
     /// removes problems with empty partition from the result.
     pub fn generate(active_degree: usize, passive_degree: usize, alphabet_length: u8) -> Vec<Self> {
+        // TODO generate these in parallel and make it cached. These are the power sets.
         let generated_collections_of_active_configurations =
-            Configurations::generate_all(active_degree, alphabet_length);
+        Configurations::generate_all(active_degree, alphabet_length);
+
+        // TODO generate these in parallel and make it cached. These are the power sets.
         let generated_collections_of_passive_configurations =
             Configurations::generate_all(passive_degree, alphabet_length);
 
+        // TODO generate these in parallel and make it cached.
         generated_collections_of_active_configurations
             .iter()
             .cartesian_product(generated_collections_of_passive_configurations.iter())
@@ -154,6 +162,30 @@ impl LclProblem {
         });
 
         return a.collect_vec();
+    }
+
+    /// Generate all unique normalized problems of a class (cached).
+    ///
+    /// Uses `Self::generate` to generate problems.
+    pub fn get_or_generate_normalized<T: LclProblemCache>(active_degree: usize, passive_degree: usize, alphabet_length: u8, cache: Option<&mut T>) -> Vec<Self> {
+        if let Some(cache) = &cache {
+            if let Ok(result) = cache.read_problems(active_degree, passive_degree, alphabet_length as usize) {
+                info!("Found the problems from the cache!");
+                return result;
+            }
+        }
+
+        let problems = Self::generate_normalized(active_degree, passive_degree, alphabet_length);
+        // Update cache
+        if let Some(cache) = cache {
+            if let Ok(_) = cache.write_problems(active_degree, passive_degree, alphabet_length as usize, &problems) {
+                info!("Wrote new problems to the cache!");
+            } else {
+                error!("Failed writing problems to the cache!");
+            }
+        }
+
+        problems
     }
 
     /// Writes problems to a file and removes old content.

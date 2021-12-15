@@ -1,6 +1,6 @@
 use super::GraphCache;
 use crate::BiregularGraph;
-use rusqlite::{params, Connection, DatabaseName::Main, Result};
+use rusqlite::{params, Connection, Result};
 use std::path::PathBuf;
 
 pub struct SqliteCacheHandler {
@@ -15,7 +15,7 @@ impl GraphCache for SqliteCacheHandler {
         degree_p: usize,
     ) -> Result<Vec<BiregularGraph>, Box<dyn std::error::Error>> {
         let data: Vec<u8> = self.db.query_row(
-            "SELECT data FROM class WHERE nodes=?1 AND deg_a=?2 AND deg_p=?3",
+            "SELECT data FROM multigraph_class WHERE nodes=?1 AND deg_a=?2 AND deg_p=?3",
             params![n, degree_a, degree_p],
             |row| row.get(0),
         )?;
@@ -34,14 +34,14 @@ impl GraphCache for SqliteCacheHandler {
     ) -> Result<(), Box<dyn std::error::Error>> {
         let data = bincode::serialize(graphs)?;
         self.db.execute(
-            "INSERT INTO class (nodes, deg_a, deg_p, data) VALUES (?1, ?2, ?3, ?4)",
+            "INSERT INTO multigraph_class (nodes, deg_a, deg_p, data) VALUES (?1, ?2, ?3, ?4)",
             params![nodes, degree_a, degree_p, data],
         )?;
         Ok(())
     }
 
     fn get_path(&self) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
-        todo!()
+        panic!("This graph class has no specific file")
     }
 
     fn has_path(&self) -> bool {
@@ -65,22 +65,6 @@ impl SqliteCacheHandler {
     }
 }
 
-pub fn create_database(path: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let db = rusqlite::Connection::open_in_memory()?;
-    db.execute(
-        "CREATE TABLE class (
-                nodes           INTEGER NOT NULL,
-                deg_a           INTEGER NOT NULL,
-                deg_p           INTEGER NOT NULL,
-                data            BLOB,
-                CONSTRAINT class_pk PRIMARY KEY (nodes, deg_a, deg_p)
-            );",
-        [],
-    )?;
-    db.backup(Main, path, None)?;
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -91,12 +75,12 @@ mod tests {
         // let db_handler = SqliteCacheHandler::new(db_path)?;
         let db = rusqlite::Connection::open_in_memory()?;
         db.execute(
-            "CREATE TABLE class (
+            "CREATE TABLE multigraph_class (
                     nodes           INTEGER NOT NULL,
                     deg_a           INTEGER NOT NULL,
                     deg_p           INTEGER NOT NULL,
                     data            BLOB,
-                    CONSTRAINT class_pk PRIMARY KEY (nodes, deg_a, deg_p)
+                    CONSTRAINT multigraph_class_pk PRIMARY KEY (nodes, deg_a, deg_p)
                 );",
             [],
         )?;
@@ -113,14 +97,14 @@ mod tests {
         let data = bincode::serialize(&graphs).unwrap();
 
         let result_insert = db.execute(
-            "INSERT INTO class (nodes, deg_a, deg_p, data) VALUES (?1, ?2, ?3, ?4)",
+            "INSERT INTO multigraph_class (nodes, deg_a, deg_p, data) VALUES (?1, ?2, ?3, ?4)",
             params![n, active_degree, passive_degree, data],
         )?;
 
         dbg!(result_insert);
 
         let data2: Result<Vec<u8>> = db.query_row(
-            "SELECT data FROM class WHERE nodes=?1 AND deg_a=?2 AND deg_p=?3",
+            "SELECT data FROM multigraph_class WHERE nodes=?1 AND deg_a=?2 AND deg_p=?3",
             params![n, active_degree, passive_degree],
             |row| row.get(0),
         );
