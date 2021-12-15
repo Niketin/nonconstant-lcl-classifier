@@ -40,7 +40,6 @@ impl SatEncoder {
         let active_permutations: Permutations = lcl_problem.active.get_permutations();
         let passive_permutations: Permutations = lcl_problem.passive.get_permutations();
 
-
         let labels_active = lcl_problem.active.get_labels_set();
         let labels_passive = lcl_problem.passive.get_labels_set();
         let labels = labels_active.union(&labels_passive).copied().collect_vec();
@@ -49,7 +48,7 @@ impl SatEncoder {
             graph,
             active_permutations,
             passive_permutations,
-            labels
+            labels,
         }
     }
 
@@ -66,7 +65,6 @@ impl SatEncoder {
 
         let active_permutations_len: usize = self.active_permutations.len();
         let passive_permutations_len: usize = self.passive_permutations.len();
-
 
         // 1. Adjacent nodes need to agree on the edge's label.
         // In other words, two adjacent nodes cannot label their shared edge differently.

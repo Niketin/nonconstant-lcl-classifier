@@ -1,13 +1,11 @@
-
-use crate::GraphCache;
-
 use super::get_partitions;
 use super::{
-    biregular_partition_sizes, generate_bipartite_multigraphs,
-    multigraph_string_to_petgraph, partition_is_regular, UndirectedGraph,
+    biregular_partition_sizes, generate_bipartite_multigraphs, multigraph_string_to_petgraph,
+    partition_is_regular, UndirectedGraph,
 };
-//use crate::GraphCache;
+use crate::GraphCache;
 use itertools::Itertools;
+use log::{error, info};
 use petgraph::graph::NodeIndex;
 use serde::{Deserialize, Serialize};
 use std::mem;
@@ -31,49 +29,45 @@ pub struct BiregularGraph {
 }
 
 impl BiregularGraph {
-    /// Parallelly generates nonisomorphic biregular graphs with parallel edges.
+    /// Generates nonisomorphic biregular multigraphs in parallel and uses the provided cache.
     ///
-    /// Graph generation is divided into multiple threads.
-    /// After the threads are done, each subresult is combined into one collection of results.
-    /// By default the function uses the amount of logical cores in the system.
+    /// Uses `Self::generate` to generate the graphs.
     ///
     /// Multigraph results are cached using the `multigrap_cache`.
     /// Caching saves resources when multiple calls with the same class properties are given.
-    pub fn get_or_generate_multigraphs_parallel<T: GraphCache>(
+    pub fn get_or_generate<T: GraphCache>(
         graph_size: usize,
         degree_a: usize,
         degree_b: usize,
         multigraph_cache: Option<&mut T>,
         //simple_graph_cache: Option<impl GraphCache>,
     ) -> Vec<Self> {
-        eprintln!("start get_or_generate_multigraphs_parallel");
         if let Some(cache) = &multigraph_cache {
             if let Ok(result) = cache.read_graphs(graph_size, degree_a, degree_b) {
-                eprintln!("Found from cache!");
+                info!("Found the graphs from cache!");
                 return result;
             }
         }
 
-        let multigraphs = Self::generate_multigraphs_parallel(graph_size, degree_a, degree_b);
-        eprintln!("Generated multigraphs!");
+        let multigraphs = Self::generate(graph_size, degree_a, degree_b);
         // Update cache
         if let Some(cache) = multigraph_cache {
             if let Ok(_) = cache.write_graphs(graph_size, degree_a, degree_b, &multigraphs) {
-                eprintln!("Updated cache!");
+                info!("Updated the cache!");
             } else {
-                eprintln!("Failed updating cache!");
+                error!("Failed updating cache!");
             }
         }
 
-        eprintln!("end get_or_generate_multigraphs_parallel");
         multigraphs
     }
 
-    pub fn generate_multigraphs_parallel(
-        graph_size: usize,
-        degree_a: usize,
-        degree_b: usize,
-    ) -> Vec<Self> {
+    /// Generates nonisomorphic biregular multigraphs in parallel.
+    ///
+    /// Graph generation is divided into multiple threads.
+    /// After the threads are done, each subresult is combined into one collection of results.
+    /// By default the function uses the amount of logical cores in the system.
+    pub fn generate(graph_size: usize, degree_a: usize, degree_b: usize) -> Vec<Self> {
         let max_degree = std::cmp::max(degree_a, degree_b);
         let max_edge_multiplicity = max_degree;
         let threads = num_cpus::get();
@@ -102,6 +96,7 @@ impl BiregularGraph {
                     multigraphs.push(((n1, n2), mg));
                 }
 
+                // Multigraphs in petgraph format.
                 let multigraphs_petgraph = multigraphs
                     .into_iter()
                     .filter_map(|((n1, n2), graphs)| {
@@ -151,15 +146,15 @@ mod tests {
 
     #[test]
     fn test_generating_biregular_graphs_with_parallel_edges() {
-        assert_eq!(BiregularGraph::generate_multigraphs_parallel(2, 2, 2).len(), 1);
-        assert_eq!(BiregularGraph::generate_multigraphs_parallel(5, 2, 3).len(), 2);
-        assert_eq!(BiregularGraph::generate_multigraphs_parallel(7, 3, 4).len(), 9);
-        assert_eq!(BiregularGraph::generate_multigraphs_parallel(9, 8, 1).len(), 1);
+        assert_eq!(BiregularGraph::generate(2, 2, 2).len(), 1);
+        assert_eq!(BiregularGraph::generate(5, 2, 3).len(), 2);
+        assert_eq!(BiregularGraph::generate(7, 3, 4).len(), 9);
+        assert_eq!(BiregularGraph::generate(9, 8, 1).len(), 1);
     }
 
     #[test]
     fn test_biregular_graph_partitions_have_correct_degrees() {
-        let graphs = BiregularGraph::generate_multigraphs_parallel(5, 3, 2);
+        let graphs = BiregularGraph::generate(5, 3, 2);
 
         for graph in graphs {
             assert_eq!(graph.degree_a, 3);

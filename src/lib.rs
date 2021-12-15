@@ -1,15 +1,15 @@
+pub mod graph_caches;
 mod graph_utils;
 mod lcl_problem;
 mod sat_encoder;
 mod sat_solver;
-pub mod graph_caches;
 
+pub use graph_caches::GraphCache;
 pub use graph_utils::{save_as_svg, BiregularGraph, DotFormat, UndirectedGraph};
 pub use lcl_problem::configurations::Configurations;
 pub use lcl_problem::LclProblem;
 pub use sat_encoder::SatEncoder;
 pub use sat_solver::{SatResult, SatSolver};
-pub use graph_caches::GraphCache;
 
 #[cfg(test)]
 mod tests {
@@ -26,7 +26,7 @@ mod tests {
         let deg_a = lcl_problem.active.get_labels_per_configuration();
         let deg_p = lcl_problem.passive.get_labels_per_configuration();
 
-        let graphs = BiregularGraph::generate_multigraphs_parallel(n, deg_a, deg_p);
+        let graphs = BiregularGraph::generate(n, deg_a, deg_p);
 
         assert!(!graphs.is_empty());
 
@@ -50,7 +50,7 @@ mod tests {
         let deg_a = lcl_problem.active.get_labels_per_configuration();
         let deg_p = lcl_problem.passive.get_labels_per_configuration();
 
-        let graphs = BiregularGraph::generate_multigraphs_parallel(n, deg_a, deg_p);
+        let graphs = BiregularGraph::generate(n, deg_a, deg_p);
 
         assert!(!graphs.is_empty());
         graphs.into_iter().for_each(|graph| {
@@ -74,8 +74,7 @@ mod tests {
         let deg_a = lcl_problem.active.get_labels_per_configuration();
         let deg_p = lcl_problem.passive.get_labels_per_configuration();
 
-        let graphs_grouped =
-            (n_min..=n_max).map(|n| BiregularGraph::generate_multigraphs_parallel(n, deg_a, deg_p));
+        let graphs_grouped = (n_min..=n_max).map(|n| BiregularGraph::generate(n, deg_a, deg_p));
 
         let results_grouped = graphs_grouped
             .into_iter()
@@ -113,7 +112,7 @@ mod tests {
         let deg_a = lcl_problem.active.get_labels_per_configuration();
         let deg_p = lcl_problem.passive.get_labels_per_configuration();
 
-        let graphs = BiregularGraph::generate_multigraphs_parallel(n, deg_a, deg_p);
+        let graphs = BiregularGraph::generate(n, deg_a, deg_p);
 
         assert!(!graphs.is_empty());
 
