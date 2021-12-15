@@ -1,10 +1,10 @@
-pub mod graph_caches;
+pub mod caches;
 mod graph_utils;
 mod lcl_problem;
 mod sat_encoder;
 mod sat_solver;
 
-pub use graph_caches::GraphCache;
+pub use caches::graph::GraphCache;
 pub use graph_utils::{save_as_svg, BiregularGraph, DotFormat, UndirectedGraph};
 pub use lcl_problem::configurations::Configurations;
 pub use lcl_problem::LclProblem;

@@ -210,12 +210,12 @@ fn get_subcommand_graphs() -> App<'static, 'static> {
 
 fn get_subcommand_create_sql_cache() -> App<'static, 'static> {
     let sqlite_cache = Arg::with_name("sqlite_cache")
-        .help("Path to an sqlite database that will be used as a graph cache")
+        .help("Path to a new SQLite database")
         .long_help(indoc! {"
-            Path to an sqlite database that will be created.
+            Path to a new SQLite database that will be used as a cache.
 
-            This means that if the graphs already exist in the database,
-            the graphs are retrieved from there.
+            This means that if the graphs/problems already exist in the database,
+            they can be retrieved from there.
         "})
         .takes_value(true)
         .value_name("path")

@@ -44,7 +44,7 @@ impl BiregularGraph {
     ) -> Vec<Self> {
         if let Some(cache) = &multigraph_cache {
             if let Ok(result) = cache.read_graphs(graph_size, degree_a, degree_b) {
-                info!("Found the graphs from cache!");
+                info!("Read the graphs from cache!");
                 return result;
             }
         }
@@ -53,7 +53,7 @@ impl BiregularGraph {
         // Update cache
         if let Some(cache) = multigraph_cache {
             if let Ok(_) = cache.write_graphs(graph_size, degree_a, degree_b, &multigraphs) {
-                info!("Updated the cache!");
+                info!("Wrote to the graph cache!");
             } else {
                 error!("Failed updating cache!");
             }
