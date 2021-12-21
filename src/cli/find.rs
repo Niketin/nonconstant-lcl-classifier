@@ -3,8 +3,9 @@ use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
 use log::info;
-use std::time::Instant;
+use std::{path::PathBuf, str::FromStr, time::Instant};
 use thesis_tool_lib::{
+    caches::{GraphSqliteCache, LclProblemSqliteCache},
     save_as_svg, BiregularGraph, DotFormat, LclProblem, SatEncoder, SatResult, SatSolver,
 };
 
@@ -13,6 +14,26 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
     let progress = matches_find.occurrences_of("progress");
     let n_lower = value_t_or_exit!(matches_find, "min_nodes", usize);
     let n_upper = value_t_or_exit!(matches_find, "max_nodes", usize);
+
+    let sqlite_cache_path = matches_find.value_of("sqlite_cache");
+
+    let mut graph_cache = if sqlite_cache_path.is_some() {
+        Some(GraphSqliteCache::new(
+            PathBuf::from_str(sqlite_cache_path.unwrap())
+                .expect("Database at the given path does not exist"),
+        ))
+    } else {
+        None
+    };
+
+    let mut problem_cache = if sqlite_cache_path.is_some() {
+        Some(LclProblemSqliteCache::new(
+            PathBuf::from_str(sqlite_cache_path.unwrap())
+                .expect("Database at the given path does not exist"),
+        ))
+    } else {
+        None
+    };
 
     let get_progress_bar = |n: u64, progress_level| {
         if progress >= progress_level {
@@ -36,7 +57,7 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
 
     let get_spinner = || {
         ProgressStyle::default_spinner()
-            .template("[{elapsed_precise}] {spinner:47.cyan/blue} {msg}")
+            .template("[{elapsed_precise}] {spinner:31.cyan/blue} {pos:>7}/{len:7} {msg}")
     };
 
     let pb_gen_problems = get_progress_bar(0, 1);
@@ -63,7 +84,12 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
             let active_degree = value_t_or_exit!(sub_m, "active_degree", usize);
             let passive_degree = value_t_or_exit!(sub_m, "passive_degree", usize);
             let label_count = value_t_or_exit!(sub_m, "label_count", usize);
-            LclProblem::generate_normalized(active_degree, passive_degree, label_count as u8)
+            LclProblem::get_or_generate_normalized(
+                active_degree,
+                passive_degree,
+                label_count as u8,
+                problem_cache.as_mut(),
+            )
         }
         (_, _) => unreachable!(),
     };
@@ -101,7 +127,7 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
     for n in n_lower..=n_upper {
         // Generate biregular graphs.
         let now = Instant::now();
-        let graphs_n = BiregularGraph::generate(n, deg_a, deg_p);
+        let graphs_n = BiregularGraph::get_or_generate(n, deg_a, deg_p, graph_cache.as_mut());
         info!(
             "Generated {} nonisomorphic biregular graphs in {} s",
             graphs_n.len(),
@@ -110,6 +136,8 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
 
         graphs.push(graphs_n);
     }
+    let graph_count: usize = graphs.iter().map(|x| x.len()).sum();
+    pb_graphs.set_length(graph_count as u64);
     pb_graphs.finish_with_message(format!(
         "Generating nonisomorphic ({},{})-biregular graphs done!",
         deg_a, deg_p,
