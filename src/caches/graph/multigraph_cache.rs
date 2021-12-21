@@ -3,11 +3,11 @@ use crate::BiregularGraph;
 use rusqlite::{params, Connection, Result};
 use std::path::PathBuf;
 
-pub struct SqliteCacheHandler {
+pub struct GraphSqliteHandler {
     db: Connection,
 }
 
-impl GraphCache for SqliteCacheHandler {
+impl GraphCache for GraphSqliteHandler {
     fn read_graphs(
         &self,
         n: usize,
@@ -15,7 +15,7 @@ impl GraphCache for SqliteCacheHandler {
         degree_p: usize,
     ) -> Result<Vec<BiregularGraph>, Box<dyn std::error::Error>> {
         let data: Vec<u8> = self.db.query_row(
-            "SELECT data FROM multigraph_class WHERE nodes=?1 AND deg_a=?2 AND deg_p=?3",
+            "SELECT data FROM multigraph_class WHERE nodes=?1 AND degree_a=?2 AND degree_p=?3",
             params![n, degree_a, degree_p],
             |row| row.get(0),
         )?;
@@ -34,7 +34,7 @@ impl GraphCache for SqliteCacheHandler {
     ) -> Result<(), Box<dyn std::error::Error>> {
         let data = bincode::serialize(graphs)?;
         self.db.execute(
-            "INSERT INTO multigraph_class (nodes, deg_a, deg_p, data) VALUES (?1, ?2, ?3, ?4)",
+            "INSERT INTO multigraph_class (nodes, degree_a, degree_p, data) VALUES (?1, ?2, ?3, ?4)",
             params![nodes, degree_a, degree_p, data],
         )?;
         Ok(())
@@ -49,7 +49,7 @@ impl GraphCache for SqliteCacheHandler {
     }
 }
 
-impl SqliteCacheHandler {
+impl GraphSqliteHandler {
     pub fn new(path: PathBuf) -> Self {
         let connection = Self::open_connection(&path).expect(
             format!(
@@ -87,7 +87,7 @@ mod tests {
         let n = 10;
         let active_degree = 3;
         let passive_degree = 3;
-        let graphs = BiregularGraph::get_or_generate::<SqliteCacheHandler>(
+        let graphs = BiregularGraph::get_or_generate::<GraphSqliteHandler>(
             n,
             active_degree,
             passive_degree,
