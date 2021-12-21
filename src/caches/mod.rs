@@ -25,15 +25,6 @@ pub fn create_sqlite_cache(path: &str) -> Result<(), Box<dyn std::error::Error>>
             );",
         [],
     )?;
-    db.execute(
-        "CREATE TABLE configuration_powerset (
-                degree          INTEGER NOT NULL,
-                label_count     INTEGER NOT NULL,
-                data            BLOB,
-                CONSTRAINT configuration_powerset_pk PRIMARY KEY (degree, label_count)
-            );",
-        [],
-    )?;
     db.backup(Main, path, None)?;
     Ok(())
 }
