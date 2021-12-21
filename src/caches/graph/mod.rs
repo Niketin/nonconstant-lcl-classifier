@@ -1,22 +1,8 @@
-pub mod multigraph_cache;
+pub mod multigraph_sqlite_cache;
 
-use crate::BiregularGraph;
-use std::path::PathBuf;
-
-pub trait GraphCache {
-    fn read_graphs(
-        &self,
-        n: usize,
-        degree_a: usize,
-        degree_p: usize,
-    ) -> Result<Vec<BiregularGraph>, Box<dyn std::error::Error>>;
-    fn has_path(&self) -> bool;
-    fn get_path(&self) -> Result<PathBuf, Box<dyn std::error::Error>>;
-    fn write_graphs(
-        &mut self,
-        nodes: usize,
-        degree_a: usize,
-        degree_p: usize,
-        graphs: &Vec<BiregularGraph>,
-    ) -> Result<(), Box<dyn std::error::Error>>;
+#[derive(Clone, Copy)]
+pub struct GraphCacheParams {
+    pub n: usize,
+    pub degree_a: usize,
+    pub degree_p: usize,
 }

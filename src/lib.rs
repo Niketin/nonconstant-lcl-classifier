@@ -1,15 +1,15 @@
 pub mod caches;
 mod graph_utils;
-mod lcl_problem;
-mod sat_encoder;
-mod sat_solver;
+pub mod lcl_problem;
+pub mod sat_encoder;
+pub mod sat_solver;
 
-pub use caches::graph::GraphCache;
 pub use graph_utils::{save_as_svg, BiregularGraph, DotFormat, UndirectedGraph};
 pub use lcl_problem::configurations::Configurations;
 pub use lcl_problem::LclProblem;
 pub use sat_encoder::SatEncoder;
 pub use sat_solver::{SatResult, SatSolver};
+//pub use caches::{GraphCacheParams, GraphSqliteCache};
 
 #[cfg(test)]
 mod tests {

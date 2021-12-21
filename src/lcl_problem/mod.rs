@@ -13,7 +13,7 @@ use std::{
     path::PathBuf,
 };
 
-use crate::caches::lcl_problem::LclProblemCache;
+use crate::caches::{lcl_problem::LclProblemCacheParams, Cache};
 
 /// Locally Checkable Labeling problem for biregular graphs.
 ///
@@ -188,16 +188,19 @@ impl LclProblem {
     /// Generate all unique normalized problems of a class (cached).
     ///
     /// Uses `Self::generate` to generate problems.
-    pub fn get_or_generate_normalized<T: LclProblemCache>(
+    pub fn get_or_generate_normalized<T: Cache<LclProblemCacheParams, LclProblem>>(
         active_degree: usize,
         passive_degree: usize,
         alphabet_length: u8,
         normalized_problem_cache: Option<&mut T>,
     ) -> Vec<Self> {
+        let params = LclProblemCacheParams {
+            degree_a: active_degree,
+            degree_p: passive_degree,
+            label_count: alphabet_length as usize,
+        };
         if let Some(cache) = &normalized_problem_cache {
-            if let Ok(result) =
-                cache.read_problems(active_degree, passive_degree, alphabet_length as usize)
-            {
+            if let Ok(result) = cache.read(params) {
                 info!(
                     "Read the problems (deg_active={}, deg_passive={}, labels={}) from cache",
                     active_degree, passive_degree, alphabet_length
@@ -210,10 +213,7 @@ impl LclProblem {
         // Update cache
         if let Some(cache) = normalized_problem_cache {
             cache
-                .write_problems(
-                    active_degree,
-                    passive_degree,
-                    alphabet_length as usize,
+                .write(params,
                     &problems,
                 )
                 .expect(format!("Failed writing the problems (deg_active={}, deg_passive={}, labels={}) to cache",
@@ -303,8 +303,9 @@ impl Ord for LclProblem {
 
 #[cfg(test)]
 mod tests {
+    use crate::caches::LclProblemSqliteCache;
+
     use super::*;
-    use crate::caches::lcl_problem::lcl_problem_cache::LclProblemSqliteHandler;
 
     #[test]
     fn test_new_lcl_problem() {
@@ -353,14 +354,14 @@ mod tests {
     #[test]
     fn test_normalized_problems_count_0() {
         let problems =
-            LclProblem::get_or_generate_normalized::<LclProblemSqliteHandler>(2, 1, 2, None);
+            LclProblem::get_or_generate_normalized::<LclProblemSqliteCache>(2, 1, 2, None);
         assert_eq!(problems.len(), 5);
     }
 
     #[test]
     fn test_normalized_problems_count_1() {
         let problems =
-            LclProblem::get_or_generate_normalized::<LclProblemSqliteHandler>(3, 2, 3, None);
+            LclProblem::get_or_generate_normalized::<LclProblemSqliteCache>(3, 2, 3, None);
         assert_eq!(problems.len(), 7735);
     }
 }
