@@ -1,7 +1,16 @@
 pub mod graph;
 pub mod lcl_problem;
 
+pub use graph::multigraph_sqlite_cache::GraphSqliteCache;
+pub use graph::GraphCacheParams;
+pub use lcl_problem::lcl_problem_sqlite_cache::LclProblemSqliteCache;
+pub use lcl_problem::LclProblemCacheParams;
 use rusqlite::DatabaseName::Main;
+
+pub trait Cache<P, T> {
+    fn read(&self, params: P) -> Result<Vec<T>, Box<dyn std::error::Error>>;
+    fn write(&mut self, params: P, data: &Vec<T>) -> Result<(), Box<dyn std::error::Error>>;
+}
 
 pub fn create_sqlite_cache(path: &str) -> Result<(), Box<dyn std::error::Error>> {
     let db = rusqlite::Connection::open_in_memory()?;

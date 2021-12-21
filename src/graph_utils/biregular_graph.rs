@@ -3,7 +3,7 @@ use super::{
     biregular_partition_sizes, generate_bipartite_multigraphs, multigraph_string_to_petgraph,
     partition_is_regular, UndirectedGraph,
 };
-use crate::GraphCache;
+use crate::caches::{Cache, GraphCacheParams};
 use itertools::Itertools;
 use log::info;
 use petgraph::graph::NodeIndex;
@@ -35,15 +35,20 @@ impl BiregularGraph {
     ///
     /// Multigraph results are cached using the `multigrap_cache`.
     /// Caching saves resources when multiple calls with the same class properties are given.
-    pub fn get_or_generate<T: GraphCache>(
+    pub fn get_or_generate<T: Cache<GraphCacheParams, Self>>(
         graph_size: usize,
         degree_a: usize,
         degree_b: usize,
         multigraph_cache: Option<&mut T>,
         //simple_graph_cache: Option<impl GraphCache>,
     ) -> Vec<Self> {
+        let params = GraphCacheParams {
+            n: graph_size,
+            degree_a,
+            degree_p: degree_b,
+        };
         if let Some(cache) = &multigraph_cache {
-            if let Ok(result) = cache.read_graphs(graph_size, degree_a, degree_b) {
+            if let Ok(result) = cache.read(params) {
                 info!(
                     "Read the biregular multigraphs (n={}, deg_a={}, deg_b={}) from cache",
                     graph_size, degree_a, degree_b
@@ -55,8 +60,13 @@ impl BiregularGraph {
         let multigraphs = Self::generate(graph_size, degree_a, degree_b);
         // Update cache
         if let Some(cache) = multigraph_cache {
-            cache.write_graphs(graph_size, degree_a, degree_b, &multigraphs)
-            .expect(format!("Failed writing the biregular multigraphs (n={}, deg_a={}, deg_b={}) to cache", graph_size, degree_a, degree_b).as_str());
+            cache.write(params, &multigraphs).expect(
+                format!(
+                    "Failed writing the biregular multigraphs (n={}, deg_a={}, deg_b={}) to cache",
+                    graph_size, degree_a, degree_b
+                )
+                .as_str(),
+            );
 
             info!(
                 "Wrote the biregular multigraphs (n={}, deg_a={}, deg_b={}) to cache",
