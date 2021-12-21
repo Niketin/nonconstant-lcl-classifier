@@ -15,7 +15,12 @@ pub fn create_cache(path: &str) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn create_graphs(cache_path: &str, n_low: usize, n_high: usize, deg_a: usize, deg_p: usize) -> Result<(), Box<dyn Error>> {
+pub fn create_graphs(n_low: usize, n_high: usize, deg_a: usize, deg_p: usize) -> Result<(), Box<dyn Error>> {
+    execute_app(format!("gen graphs {} {} {} {}", n_low, n_high, deg_a, deg_p).as_str())?;
+    Ok(())
+}
+
+pub fn create_graphs_cached(cache_path: &str, n_low: usize, n_high: usize, deg_a: usize, deg_p: usize) -> Result<(), Box<dyn Error>> {
     execute_app(format!("gen graphs -c {} {} {} {} {}", cache_path, n_low, n_high, deg_a, deg_p).as_str())?;
     Ok(())
 }
