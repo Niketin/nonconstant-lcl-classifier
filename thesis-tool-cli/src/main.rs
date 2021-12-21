@@ -29,8 +29,8 @@ mod cli_tests {
     fn test_generate_graphs() -> Result<(), Box<dyn Error>> {
         let path = "/tmp/tool_test_cache_1.db";
         create_cache(path)?;
-        create_graphs(path, 1, 16, 3, 3)?;
-        create_graphs(path, 1, 16, 3, 3)?;
+        create_graphs_cached(path, 1, 16, 3, 3)?;
+        create_graphs_cached(path, 1, 16, 3, 3)?;
         Ok(())
     }
 
