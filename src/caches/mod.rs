@@ -8,20 +8,29 @@ pub fn create_sqlite_cache(path: &str) -> Result<(), Box<dyn std::error::Error>>
     db.execute(
         "CREATE TABLE multigraph_class (
                 nodes           INTEGER NOT NULL,
-                deg_a           INTEGER NOT NULL,
-                deg_p           INTEGER NOT NULL,
+                degree_a        INTEGER NOT NULL,
+                degree_p        INTEGER NOT NULL,
                 data            BLOB,
-                CONSTRAINT multigraph_class_pk PRIMARY KEY (nodes, deg_a, deg_p)
+                CONSTRAINT multigraph_class_pk PRIMARY KEY (nodes, degree_a, degree_p)
             );",
         [],
     )?;
     db.execute(
         "CREATE TABLE problem_class (
-                deg_a           INTEGER NOT NULL,
-                deg_p           INTEGER NOT NULL,
+                degree_a        INTEGER NOT NULL,
+                degree_p        INTEGER NOT NULL,
                 label_count     INTEGER NOT NULL,
                 data            BLOB,
-                CONSTRAINT problem_class_pk PRIMARY KEY (deg_a, deg_p, label_count)
+                CONSTRAINT problem_class_pk PRIMARY KEY (degree_a, degree_p, label_count)
+            );",
+        [],
+    )?;
+    db.execute(
+        "CREATE TABLE configuration_powerset (
+                degree          INTEGER NOT NULL,
+                label_count     INTEGER NOT NULL,
+                data            BLOB,
+                CONSTRAINT configuration_powerset_pk PRIMARY KEY (degree, label_count)
             );",
         [],
     )?;

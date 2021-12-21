@@ -2,7 +2,7 @@ pub mod configurations;
 
 use configurations::Configurations;
 use itertools::Itertools;
-use log::{info, error};
+use log::info;
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
@@ -13,7 +13,7 @@ use std::{
     path::PathBuf,
 };
 
-use crate::caches::lcl_problem::LclProblemCache;
+use crate::caches::lcl_problem::{LclProblemCache, PowersetCache};
 
 /// Locally Checkable Labeling problem for biregular graphs.
 ///
@@ -99,23 +99,34 @@ impl LclProblem {
         std::mem::swap(&mut first.1, &mut self.passive);
     }
 
-    /// Generate all unique problems of a class.
+    /// Generate all unique problems of a class (cached).
     ///
     /// Uses `Self::purge` for each generated problem and
     /// removes problems with empty partition from the result.
-    pub fn generate(active_degree: usize, passive_degree: usize, alphabet_length: u8) -> Vec<Self> {
-        // TODO generate these in parallel and make it cached. These are the power sets.
-        let generated_collections_of_active_configurations =
-        Configurations::generate_all(active_degree, alphabet_length);
+    pub fn get_or_generate<T: PowersetCache>(
+        active_degree: usize,
+        passive_degree: usize,
+        alphabet_length: u8,
+        mut powerset_cache: Option<&mut T>,
+    ) -> Vec<Self> {
+        // TODO generate these in parallel.
+        let active_configuration_powerset = Configurations::get_or_generate_powerset(
+            active_degree,
+            alphabet_length,
+            &mut powerset_cache,
+        );
 
-        // TODO generate these in parallel and make it cached. These are the power sets.
-        let generated_collections_of_passive_configurations =
-            Configurations::generate_all(passive_degree, alphabet_length);
+        // TODO generate these in parallel.
+        let passive_configuration_powerset = Configurations::get_or_generate_powerset(
+            passive_degree,
+            alphabet_length,
+            &mut powerset_cache,
+        );
 
-        // TODO generate these in parallel and make it cached.
-        generated_collections_of_active_configurations
+        // TODO generate these in parallel. No need to cache as the end result (normalized) is already cached.
+        active_configuration_powerset
             .iter()
-            .cartesian_product(generated_collections_of_passive_configurations.iter())
+            .cartesian_product(passive_configuration_powerset.iter())
             .filter_map(|(active, passive)| {
                 let mut problem = LclProblem::from_configurations(active.clone(), passive.clone());
                 problem.purge();
@@ -130,14 +141,17 @@ impl LclProblem {
 
     /// Generates all unique normalized problems of a class.
     ///
+    /// Intermediate results (powersets) are cached using parameter `cache`.
+    ///
     /// Generates problems with `Self::generate` and then normalizes them.
     /// Returns only unique problems.
-    pub fn generate_normalized(
+    pub fn generate_normalized<T: PowersetCache>(
         active_degree: usize,
         passive_degree: usize,
         label_count: u8,
+        cache: Option<&mut T>,
     ) -> Vec<Self> {
-        let mut problems = Self::generate(active_degree, passive_degree, label_count);
+        let mut problems = Self::get_or_generate(active_degree, passive_degree, label_count, cache);
         problems.iter_mut().for_each(|p| p.normalize());
         return problems.into_iter().unique().collect_vec();
     }
@@ -167,22 +181,46 @@ impl LclProblem {
     /// Generate all unique normalized problems of a class (cached).
     ///
     /// Uses `Self::generate` to generate problems.
-    pub fn get_or_generate_normalized<T: LclProblemCache>(active_degree: usize, passive_degree: usize, alphabet_length: u8, cache: Option<&mut T>) -> Vec<Self> {
-        if let Some(cache) = &cache {
-            if let Ok(result) = cache.read_problems(active_degree, passive_degree, alphabet_length as usize) {
-                info!("Found the problems from the cache!");
+    pub fn get_or_generate_normalized<T: LclProblemCache, P: PowersetCache>(
+        active_degree: usize,
+        passive_degree: usize,
+        alphabet_length: u8,
+        normalized_problem_cache: Option<&mut T>,
+        powerset_cache: Option<&mut P>,
+    ) -> Vec<Self> {
+        if let Some(cache) = &normalized_problem_cache {
+            if let Ok(result) =
+                cache.read_problems(active_degree, passive_degree, alphabet_length as usize)
+            {
+                info!(
+                    "Read the problems (deg_active={}, deg_passive={}, labels={}) from cache",
+                    active_degree, passive_degree, alphabet_length
+                );
                 return result;
             }
         }
 
-        let problems = Self::generate_normalized(active_degree, passive_degree, alphabet_length);
+        let problems = Self::generate_normalized(
+            active_degree,
+            passive_degree,
+            alphabet_length,
+            powerset_cache,
+        );
         // Update cache
-        if let Some(cache) = cache {
-            if let Ok(_) = cache.write_problems(active_degree, passive_degree, alphabet_length as usize, &problems) {
-                info!("Wrote new problems to the cache!");
-            } else {
-                error!("Failed writing problems to the cache!");
-            }
+        if let Some(cache) = normalized_problem_cache {
+            cache
+                .write_problems(
+                    active_degree,
+                    passive_degree,
+                    alphabet_length as usize,
+                    &problems,
+                )
+                .expect(format!("Failed writing the problems (deg_active={}, deg_passive={}, labels={}) to cache",
+                active_degree, passive_degree, alphabet_length).as_str());
+            info!(
+                "wrote the problems (deg_active={}, deg_passive={}, labels={}) to cache",
+                active_degree, passive_degree, alphabet_length
+            );
         }
 
         problems
@@ -264,6 +302,9 @@ impl Ord for LclProblem {
 
 #[cfg(test)]
 mod tests {
+    use crate::caches::lcl_problem::lcl_problem_cache::LclProblemSqliteHandler;
+    use crate::caches::lcl_problem::powerset_cache::PowersetSqliteHandler;
+
     use super::*;
 
     #[test]
@@ -306,19 +347,25 @@ mod tests {
 
     #[test]
     fn test_problems_count() {
-        let problems = LclProblem::generate(3, 2, 3);
+        let problems = LclProblem::get_or_generate::<PowersetSqliteHandler>(3, 2, 3, None);
         assert_eq!(problems.len(), 44343)
     }
 
     #[test]
     fn test_normalized_problems_count_0() {
-        let problems = LclProblem::generate_normalized(2, 1, 2);
+        let problems = LclProblem::get_or_generate_normalized::<
+            LclProblemSqliteHandler,
+            PowersetSqliteHandler,
+        >(2, 1, 2, None, None);
         assert_eq!(problems.len(), 5);
     }
 
     #[test]
     fn test_normalized_problems_count_1() {
-        let problems = LclProblem::generate_normalized(3, 2, 3);
+        let problems = LclProblem::get_or_generate_normalized::<
+            LclProblemSqliteHandler,
+            PowersetSqliteHandler,
+        >(3, 2, 3, None, None);
         assert_eq!(problems.len(), 7735);
     }
 }

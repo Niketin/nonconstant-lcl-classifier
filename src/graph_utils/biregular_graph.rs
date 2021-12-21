@@ -5,7 +5,7 @@ use super::{
 };
 use crate::GraphCache;
 use itertools::Itertools;
-use log::{error, info};
+use log::info;
 use petgraph::graph::NodeIndex;
 use serde::{Deserialize, Serialize};
 use std::mem;
@@ -44,7 +44,10 @@ impl BiregularGraph {
     ) -> Vec<Self> {
         if let Some(cache) = &multigraph_cache {
             if let Ok(result) = cache.read_graphs(graph_size, degree_a, degree_b) {
-                info!("Read the graphs from cache!");
+                info!(
+                    "Read the biregular multigraphs (n={}, deg_a={}, deg_b={}) from cache",
+                    graph_size, degree_a, degree_b
+                );
                 return result;
             }
         }
@@ -52,11 +55,13 @@ impl BiregularGraph {
         let multigraphs = Self::generate(graph_size, degree_a, degree_b);
         // Update cache
         if let Some(cache) = multigraph_cache {
-            if let Ok(_) = cache.write_graphs(graph_size, degree_a, degree_b, &multigraphs) {
-                info!("Wrote to the graph cache!");
-            } else {
-                error!("Failed updating cache!");
-            }
+            cache.write_graphs(graph_size, degree_a, degree_b, &multigraphs)
+            .expect(format!("Failed writing the biregular multigraphs (n={}, deg_a={}, deg_b={}) to cache", graph_size, degree_a, degree_b).as_str());
+
+            info!(
+                "Wrote the biregular multigraphs (n={}, deg_a={}, deg_b={}) to cache",
+                graph_size, degree_a, degree_b
+            );
         }
 
         multigraphs

@@ -4,7 +4,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
 use log::info;
 use std::time::Instant;
-use thesis_tool_lib::*;
+use thesis_tool_lib::{LclProblem, caches::lcl_problem::powerset_cache::PowersetSqliteHandler, BiregularGraph, SatEncoder, SatSolver, SatResult, DotFormat, save_as_svg};
 
 pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     let verbosity = matches_find.occurrences_of("verbosity");
@@ -61,7 +61,7 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
             let active_degree = value_t_or_exit!(sub_m, "active_degree", usize);
             let passive_degree = value_t_or_exit!(sub_m, "passive_degree", usize);
             let label_count = value_t_or_exit!(sub_m, "label_count", usize);
-            LclProblem::generate_normalized(active_degree, passive_degree, label_count as u8)
+            LclProblem::generate_normalized::<PowersetSqliteHandler>(active_degree, passive_degree, label_count as u8, None)
         }
         (_, _) => unreachable!(),
     };

@@ -1,57 +1,55 @@
-use super::LclProblemCache;
-use crate::LclProblem;
+use super::PowersetCache;
+use crate::Configurations;
 use rusqlite::{params, Connection, Result};
 use std::path::PathBuf;
-pub struct LclProblemSqliteHandler {
+pub struct PowersetSqliteHandler {
     db: Connection,
 }
 
-// TODO This module is a bit DRY.
+// TODO This module is a bit DRY with multigraph cache.
 // TODO Maybe there is a more general solution to caching lcl problems and multigraphs?
 
-impl LclProblemCache for LclProblemSqliteHandler {
+impl PowersetCache for PowersetSqliteHandler {
     fn get_path(&self) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
-        panic!("This LCL problem class has no specific file")
+        panic!("This configuration powerset has no specific file")
     }
 
     fn has_path(&self) -> bool {
         false
     }
 
-    fn read_problems(
+    fn read_powerset(
         &self,
-        degree_a: usize,
-        degree_p: usize,
+        degree: usize,
         label_count: usize,
-    ) -> Result<Vec<crate::LclProblem>, Box<dyn std::error::Error>> {
+    ) -> Result<Vec<Configurations>, Box<dyn std::error::Error>> {
         let data: Vec<u8> = self.db.query_row(
-            "SELECT data FROM problem_class WHERE degree_a=?1 AND degree_p=?2 AND label_count=?3",
-            params![degree_a, degree_p, label_count],
+            "SELECT data FROM configuration_powerset WHERE degree=?1 AND label_count=?2",
+            params![degree, label_count],
             |row| row.get(0),
         )?;
 
-        let problems: Vec<LclProblem> = bincode::deserialize(&data).unwrap();
+        let powerset: Vec<Configurations> = bincode::deserialize(&data).unwrap();
 
-        Ok(problems)
+        Ok(powerset)
     }
 
-    fn write_problems(
+    fn write_powerset(
         &mut self,
-        degree_a: usize,
-        degree_p: usize,
+        degree: usize,
         label_count: usize,
-        problems: &Vec<crate::LclProblem>,
+        powerset: &Vec<Configurations>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let data = bincode::serialize(problems)?;
+        let data = bincode::serialize(powerset)?;
         self.db.execute(
-            "INSERT INTO problem_class (degree_a, degree_p, label_count, data) VALUES (?1, ?2, ?3, ?4)",
-            params![degree_a, degree_p, label_count, data],
+            "INSERT INTO configuration_powerset (degree, label_count, data) VALUES (?1, ?2, ?3)",
+            params![degree, label_count, data],
         )?;
         Ok(())
     }
 }
 
-impl LclProblemSqliteHandler {
+impl PowersetSqliteHandler {
     pub fn new(path: PathBuf) -> Self {
         let connection = Self::open_connection(&path).expect(
             format!(
