@@ -1,5 +1,4 @@
 use itertools::Itertools;
-use log::info;
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
@@ -7,8 +6,6 @@ use std::{
     error::Error,
     iter::FromIterator,
 };
-
-use crate::caches::lcl_problem::PowersetCache;
 
 /// A container for set of configurations that are used to define an LCL problem.
 ///
@@ -211,11 +208,11 @@ impl Configurations {
     /// Generate powerset of configurations with specified degree and alphabet.
     pub fn generate_powerset(degree: usize, alphabet_length: u8) -> Vec<Configurations> {
         let alphabet = (0..alphabet_length).collect_vec();
-        let all_combinations = Self::generate_with_all_combinations(degree, &alphabet);
+        let powerset_of_labels = Self::generate_with_all_combinations(degree, &alphabet);
 
-        let powerset = (1..=all_combinations.get_configuration_count())
+        let powerset_of_configurations = (1..=powerset_of_labels.get_configuration_count())
             .flat_map(|max_configurations| {
-                all_combinations
+                powerset_of_labels
                     .get_configurations()
                     .iter()
                     .cloned()
@@ -223,44 +220,7 @@ impl Configurations {
             })
             .map(|data| Configurations::from_configuration_data(data).unwrap())
             .collect_vec();
-        return powerset;
-    }
-
-    /// Generate powerset of configurations with specified degree and alphabet (cached).
-    pub fn get_or_generate_powerset<T: PowersetCache>(
-        degree: usize,
-        alphabet_length: u8,
-        cache: &mut Option<&mut T>,
-    ) -> Vec<Configurations> {
-        if let Some(cache) = &cache {
-            if let Ok(result) = cache.read_powerset(degree, alphabet_length as usize) {
-                info!(
-                    "Read the powerset (degree={}, labels={}) from cache",
-                    degree, alphabet_length
-                );
-                return result;
-            }
-        }
-
-        let powerset = Self::generate_powerset(degree, alphabet_length);
-        // Update cache
-        if let Some(cache) = cache {
-            cache
-                .write_powerset(degree, alphabet_length as usize, &powerset)
-                .expect(
-                    format!(
-                        "Failed writing the powerset (degree={}, labels={}) to cache",
-                        degree, alphabet_length
-                    )
-                    .as_str(),
-                );
-            info!(
-                "Wrote the powerset (degree={}, labels={}) to cache",
-                degree, alphabet_length
-            );
-        }
-
-        powerset
+        return powerset_of_configurations;
     }
 
     /// Generates `Configurations` that contains all combinations of the labels in `alphabet`.

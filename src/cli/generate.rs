@@ -4,7 +4,6 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use thesis_tool_lib::caches::graph::multigraph_cache::GraphSqliteHandler;
 use thesis_tool_lib::caches::lcl_problem::lcl_problem_cache::LclProblemSqliteHandler;
-use thesis_tool_lib::caches::lcl_problem::powerset_cache::PowersetSqliteHandler;
 use thesis_tool_lib::BiregularGraph;
 use thesis_tool_lib::LclProblem;
 
@@ -33,22 +32,12 @@ fn generate_problems(matches_problems: &ArgMatches) -> Result<(), Box<dyn std::e
         None
     };
 
-    let mut powerset_cache = if sqlite_cache_path.is_some() {
-        Some(PowersetSqliteHandler::new(
-            PathBuf::from_str(sqlite_cache_path.unwrap())
-                .expect("Database at the given path does not exist"),
-        ))
-    } else {
-        None
-    };
-
     let problems =
-        LclProblem::get_or_generate_normalized::<LclProblemSqliteHandler, PowersetSqliteHandler>(
+        LclProblem::get_or_generate_normalized::<LclProblemSqliteHandler>(
             active_degree,
             passive_degree,
             label_count as u8,
             problem_cache.as_mut(),
-            powerset_cache.as_mut(),
         );
 
     for problem in problems {

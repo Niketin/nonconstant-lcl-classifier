@@ -13,7 +13,7 @@ use std::{
     path::PathBuf,
 };
 
-use crate::caches::lcl_problem::{LclProblemCache, PowersetCache};
+use crate::caches::lcl_problem::LclProblemCache;
 
 /// Locally Checkable Labeling problem for biregular graphs.
 ///
@@ -49,6 +49,11 @@ impl LclProblem {
         self.active.get_configurations().is_empty() || self.passive.get_configurations().is_empty()
     }
 
+    /// Removes redundant configurations.
+    ///
+    /// Configurations, that contain some label l such that l is not in any configuration
+    /// on the other configuration set, are considered redundant.
+    ///
     /// Adapted from https://github.com/AleksTeresh/lcl-classifier/blob/be5d0196b02dad33ee19657af6b16457f59780e9/src/server/problem/problem.py#L378
     fn purge(&mut self) {
         let mut active_labels = self.active.get_labels_set();
@@ -103,30 +108,31 @@ impl LclProblem {
     ///
     /// Uses `Self::purge` for each generated problem and
     /// removes problems with empty partition from the result.
-    pub fn get_or_generate<T: PowersetCache>(
+    pub fn get_or_generate(
         active_degree: usize,
         passive_degree: usize,
         alphabet_length: u8,
-        mut powerset_cache: Option<&mut T>,
     ) -> Vec<Self> {
-        // TODO generate these in parallel.
-        let active_configuration_powerset = Configurations::get_or_generate_powerset(
-            active_degree,
-            alphabet_length,
-            &mut powerset_cache,
+        let active_configuration_powerset =
+            Configurations::generate_powerset(active_degree, alphabet_length);
+
+        let passive_configuration_powerset = if active_degree == passive_degree {
+            None
+        } else {
+            Some(Configurations::generate_powerset(
+                passive_degree,
+                alphabet_length,
+            ))
+        };
+
+        let cartesian_product = active_configuration_powerset.iter().cartesian_product(
+            passive_configuration_powerset
+                .as_ref()
+                .unwrap_or(&active_configuration_powerset)
+                .iter(),
         );
 
-        // TODO generate these in parallel.
-        let passive_configuration_powerset = Configurations::get_or_generate_powerset(
-            passive_degree,
-            alphabet_length,
-            &mut powerset_cache,
-        );
-
-        // TODO generate these in parallel. No need to cache as the end result (normalized) is already cached.
-        active_configuration_powerset
-            .iter()
-            .cartesian_product(passive_configuration_powerset.iter())
+        let purged = cartesian_product
             .filter_map(|(active, passive)| {
                 let mut problem = LclProblem::from_configurations(active.clone(), passive.clone());
                 problem.purge();
@@ -136,7 +142,9 @@ impl LclProblem {
                 None
             })
             .unique()
-            .collect_vec()
+            .collect_vec();
+
+        purged
     }
 
     /// Generates all unique normalized problems of a class.
@@ -145,13 +153,12 @@ impl LclProblem {
     ///
     /// Generates problems with `Self::generate` and then normalizes them.
     /// Returns only unique problems.
-    pub fn generate_normalized<T: PowersetCache>(
+    pub fn generate_normalized(
         active_degree: usize,
         passive_degree: usize,
         label_count: u8,
-        cache: Option<&mut T>,
     ) -> Vec<Self> {
-        let mut problems = Self::get_or_generate(active_degree, passive_degree, label_count, cache);
+        let mut problems = Self::get_or_generate(active_degree, passive_degree, label_count);
         problems.iter_mut().for_each(|p| p.normalize());
         return problems.into_iter().unique().collect_vec();
     }
@@ -181,12 +188,11 @@ impl LclProblem {
     /// Generate all unique normalized problems of a class (cached).
     ///
     /// Uses `Self::generate` to generate problems.
-    pub fn get_or_generate_normalized<T: LclProblemCache, P: PowersetCache>(
+    pub fn get_or_generate_normalized<T: LclProblemCache>(
         active_degree: usize,
         passive_degree: usize,
         alphabet_length: u8,
         normalized_problem_cache: Option<&mut T>,
-        powerset_cache: Option<&mut P>,
     ) -> Vec<Self> {
         if let Some(cache) = &normalized_problem_cache {
             if let Ok(result) =
@@ -200,12 +206,7 @@ impl LclProblem {
             }
         }
 
-        let problems = Self::generate_normalized(
-            active_degree,
-            passive_degree,
-            alphabet_length,
-            powerset_cache,
-        );
+        let problems = Self::generate_normalized(active_degree, passive_degree, alphabet_length);
         // Update cache
         if let Some(cache) = normalized_problem_cache {
             cache
@@ -302,10 +303,8 @@ impl Ord for LclProblem {
 
 #[cfg(test)]
 mod tests {
-    use crate::caches::lcl_problem::lcl_problem_cache::LclProblemSqliteHandler;
-    use crate::caches::lcl_problem::powerset_cache::PowersetSqliteHandler;
-
     use super::*;
+    use crate::caches::lcl_problem::lcl_problem_cache::LclProblemSqliteHandler;
 
     #[test]
     fn test_new_lcl_problem() {
@@ -347,25 +346,21 @@ mod tests {
 
     #[test]
     fn test_problems_count() {
-        let problems = LclProblem::get_or_generate::<PowersetSqliteHandler>(3, 2, 3, None);
+        let problems = LclProblem::get_or_generate(3, 2, 3);
         assert_eq!(problems.len(), 44343)
     }
 
     #[test]
     fn test_normalized_problems_count_0() {
-        let problems = LclProblem::get_or_generate_normalized::<
-            LclProblemSqliteHandler,
-            PowersetSqliteHandler,
-        >(2, 1, 2, None, None);
+        let problems =
+            LclProblem::get_or_generate_normalized::<LclProblemSqliteHandler>(2, 1, 2, None);
         assert_eq!(problems.len(), 5);
     }
 
     #[test]
     fn test_normalized_problems_count_1() {
-        let problems = LclProblem::get_or_generate_normalized::<
-            LclProblemSqliteHandler,
-            PowersetSqliteHandler,
-        >(3, 2, 3, None, None);
+        let problems =
+            LclProblem::get_or_generate_normalized::<LclProblemSqliteHandler>(3, 2, 3, None);
         assert_eq!(problems.len(), 7735);
     }
 }
