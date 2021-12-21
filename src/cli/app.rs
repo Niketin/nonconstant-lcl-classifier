@@ -63,6 +63,19 @@ fn get_subcommand_find() -> App<'static, 'static> {
         .help("Sets the level of verbosity")
         .multiple(true);
 
+    let sqlite_cache = Arg::with_name("sqlite_cache")
+        .help("Path to an sqlite database that will be used as a cache")
+        .long_help(indoc! {"
+            Path to an sqlite database that will be used as a cache.
+
+            This means that if the intermediate values already exist in the database,
+            they are retrieved from there.
+        "})
+        .takes_value(true)
+        .value_name("path")
+        .short("c")
+        .long("sqlite-cache");
+
     let subcommand_single = get_subcommand_single();
     let subcommand_class = get_subcommand_class();
 
@@ -83,6 +96,7 @@ fn get_subcommand_find() -> App<'static, 'static> {
             all,
             output_svg,
             verbosity,
+            sqlite_cache,
         ])
         .subcommands([subcommand_single, subcommand_class])
 }
@@ -164,12 +178,7 @@ fn get_subcommand_problems() -> App<'static, 'static> {
 
     SubCommand::with_name("problems")
         .about("Generate LCL problems")
-        .args(&[
-            active_degree,
-            passive_degree,
-            label_count,
-            sqlite_cache,
-        ])
+        .args(&[active_degree, passive_degree, label_count, sqlite_cache])
 }
 
 fn get_subcommand_graphs() -> App<'static, 'static> {
