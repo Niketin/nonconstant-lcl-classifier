@@ -1,6 +1,7 @@
 pub mod app;
 pub mod create_cache;
 pub mod find;
+pub mod from_lcl_classifier;
 pub mod generate;
 pub mod utils;
 

@@ -52,6 +52,8 @@ impl Configurations {
         for line in encoding.lines() {
             let mut configuration = Vec::<u8>::new();
             for label in line.split_ascii_whitespace() {
+                //TODO add support for compact notation from the Round eliminator
+                assert_eq!(label.len(), 1, "Labels longer than 1 character are not supported");
                 let value = if label_map.contains_key(label) {
                     label_map.get(label).unwrap().clone()
                 } else {

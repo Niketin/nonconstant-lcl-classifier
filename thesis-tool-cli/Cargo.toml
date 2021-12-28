@@ -29,3 +29,5 @@ indicatif = "0.16.2"
 console = "0.15.0"
 indoc = "1.0.3"
 thesis_tool_lib = { path = "../thesis-tool-lib" }
+postgres = "0.19.2"
+postgres-types = { version = "0.2.2", features = ["derive"] }

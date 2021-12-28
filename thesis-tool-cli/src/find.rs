@@ -9,6 +9,8 @@ use thesis_tool_lib::{
     save_as_svg, BiregularGraph, DotFormat, LclProblem, SatEncoder, SatResult, SatSolver,
 };
 
+use crate::from_lcl_classifier::fetch_problems;
+
 pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     let verbosity = matches_find.occurrences_of("verbosity");
     let progress = matches_find.occurrences_of("progress");
@@ -90,6 +92,10 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
                 label_count as u8,
                 problem_cache.as_mut(),
             )
+        }
+        ("from_classifier", Some(sub_m)) => {
+            let db_path = sub_m.value_of("database_path").unwrap();
+            fetch_problems(db_path).expect(format!("Failed to fetch problems from lcl classifier database at {}", db_path).as_str())
         }
         (_, _) => unreachable!(),
     };
