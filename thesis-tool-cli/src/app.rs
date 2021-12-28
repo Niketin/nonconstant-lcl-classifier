@@ -78,6 +78,7 @@ fn get_subcommand_find() -> App<'static, 'static> {
 
     let subcommand_single = get_subcommand_single();
     let subcommand_class = get_subcommand_class();
+    let subcommand_fetch_from_lcl_classifier_db = get_subcommand_fetch_from_lcl_classifier_db();
 
     SubCommand::with_name("find")
         .setting(AppSettings::SubcommandRequired)
@@ -98,7 +99,7 @@ fn get_subcommand_find() -> App<'static, 'static> {
             verbosity,
             sqlite_cache,
         ])
-        .subcommands([subcommand_single, subcommand_class])
+        .subcommands([subcommand_single, subcommand_class, subcommand_fetch_from_lcl_classifier_db])
 }
 
 fn get_subcommand_class() -> App<'static, 'static> {
@@ -140,6 +141,28 @@ fn get_subcommand_single() -> App<'static, 'static> {
     SubCommand::with_name("single")
         .about("Runs for a single problem")
         .args(&[active_configurations, passive_configurations])
+}
+
+fn get_subcommand_fetch_from_lcl_classifier_db() -> App<'static, 'static> {
+    let db_path = Arg::with_name("database_path")
+        .help("Path to an PostgreSQL database used by the LCL-classifier")
+        .long_help(indoc! {"
+            Path to an PostgreSQL database used by the LCL-classifier.
+
+            This is the database containing all the problems we are fetching.
+        "})
+        .value_name("database_path")
+        .required(true);
+    SubCommand::with_name("from_classifier")
+        .about("Fetch problems from LCL-classifier's database")
+        .long_about(indoc! {"
+            Fetch problems from LCL-classifier's database.
+
+            Queries all problems that have unknown lowerbound
+            i.e. all problems for which we can possibly improve the lowerbound.
+            For each problem, it tries to find a lowerbound of \"non-constant\"
+        "})
+        .args(&[db_path])
 }
 
 fn get_subcommand_generate() -> App<'static, 'static> {
