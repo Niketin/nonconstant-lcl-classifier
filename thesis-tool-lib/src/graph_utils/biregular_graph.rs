@@ -7,6 +7,7 @@ use crate::caches::{Cache, GraphCacheParams};
 use itertools::Itertools;
 use log::info;
 use petgraph::graph::NodeIndex;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::mem;
 use std::sync::mpsc;
@@ -85,12 +86,11 @@ impl BiregularGraph {
     pub fn generate(graph_size: usize, degree_a: usize, degree_b: usize) -> Vec<Self> {
         let max_degree = std::cmp::max(degree_a, degree_b);
         let max_edge_multiplicity = max_degree;
-        let threads = num_cpus::get();
+        let parts = num_cpus::get();
 
-        let (sender, receiver) = mpsc::channel();
-        for i in 0..threads {
-            let sender = sender.clone();
-            thread::spawn(move || {
+        let asd = (0usize..parts)
+            .into_par_iter()
+            .map(|i| {
                 let mut multigraphs: Vec<((usize, usize), String)> = Vec::new();
 
                 for (n1, n2) in biregular_partition_sizes(graph_size, degree_a, degree_b) {
@@ -103,7 +103,7 @@ impl BiregularGraph {
                         degree_a,
                         degree_b,
                         i,
-                        threads,
+                        parts,
                         max_edge_multiplicity,
                         edges,
                         max_degree,
@@ -146,12 +146,12 @@ impl BiregularGraph {
                     })
                     .collect_vec();
 
-                sender.send(multigraphs_biregulargraph).unwrap();
-            });
-        }
-        mem::drop(sender);
+                multigraphs_biregulargraph
+            })
+            .flatten()
+            .collect();
 
-        receiver.into_iter().flatten().collect_vec()
+            asd
     }
 }
 
