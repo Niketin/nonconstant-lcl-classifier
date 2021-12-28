@@ -1,15 +1,16 @@
+use crate::from_lcl_classifier::fetch_problems;
 use clap::{value_t_or_exit, ArgMatches};
 use console::style;
+use indicatif::{ParallelProgressIterator, ProgressFinish};
 use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
 use log::info;
+use rayon::prelude::*;
 use std::{path::PathBuf, str::FromStr, time::Instant};
 use thesis_tool_lib::{
     caches::{GraphSqliteCache, LclProblemSqliteCache},
     save_as_svg, BiregularGraph, DotFormat, LclProblem, SatEncoder, SatResult, SatSolver,
 };
-
-use crate::from_lcl_classifier::fetch_problems;
 
 pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     let verbosity = matches_find.occurrences_of("verbosity");
@@ -95,7 +96,13 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
         }
         ("from_classifier", Some(sub_m)) => {
             let db_path = sub_m.value_of("database_path").unwrap();
-            fetch_problems(db_path).expect(format!("Failed to fetch problems from lcl classifier database at {}", db_path).as_str())
+            fetch_problems(db_path).expect(
+                format!(
+                    "Failed to fetch problems from lcl classifier database at {}",
+                    db_path
+                )
+                .as_str(),
+            )
         }
         (_, _) => unreachable!(),
     };
@@ -149,148 +156,160 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
         deg_a, deg_p,
     ));
 
-    let mut results = vec![];
-
     let pb_problems = get_progress_bar(problems.len() as u64, 1);
-    pb_problems.set_style(get_progress_style());
+    pb_problems.set_style(get_progress_style().on_finish(ProgressFinish::WithMessage(
+        std::borrow::Cow::Owned("Finding lower bound proofs done!".to_string()),
+    )));
     pb_problems.set_message("Trying to find a lower bound proof for each problem...");
     if progress == 1 {
         pb_problems.enable_steady_tick(100);
     }
 
-    for (problem_i, problem) in pb_problems.wrap_iter(problems.iter()).enumerate() {
-        if verbosity >= 1 {
-            eprintln!(
-                "Finding for problem {}...",
-                style(format!("[{}/{}]", problem_i + 1, problems.len()))
-                    .bold()
-                    .dim(),
-            );
-        }
-
-        let indent_level = 2;
-
-        'graph_size_loop: for (i, n) in (n_lower..=n_upper).enumerate() {
-            let graphs_n = &graphs[i];
-            if verbosity >= 2 {
+    let results: Vec<(LclProblem, usize)> = problems
+        .par_iter()
+        .progress_with(pb_problems)
+        .enumerate()
+        .flat_map(|(problem_i, problem)| {
+            if verbosity >= 1 {
                 eprintln!(
-                    "{}{} Starting the routine for graphs of size {}...",
-                    indent(indent_level),
-                    style(format!("[{}/{}]", i + 1, n_upper - n_lower + 1))
+                    "Finding for problem {}...",
+                    style(format!("[{}/{}]", problem_i + 1, problems.len()))
                         .bold()
                         .dim(),
-                    style(format!("n={}", n)).cyan(),
-                );
-            }
-            // Create SAT encoders.
-            let now = Instant::now();
-            if verbosity >= 3 {
-                eprintln!(
-                    "{}{} Creating SAT encoders...",
-                    indent(indent_level + 2),
-                    style("[2/4]").bold().dim(),
                 );
             }
 
-            let pb = get_progress_bar(graphs_n.len() as u64, 2);
-            pb.set_style(get_progress_style());
-            pb.set_message("Creating SAT encoders");
-            let encoders = pb
-                .wrap_iter(graphs_n.into_iter())
-                .map(|graph| SatEncoder::new(&problem, graph.clone())) // TODO use immutable reference instead of cloning.
-                .collect_vec();
+            let indent_level = 2;
 
-            pb.finish_and_clear();
+            let mut results = vec![];
 
-            // Encode graphs and LCL-problem into SAT problems.
-            if verbosity >= 3 {
-                eprintln!(
-                    "{}{} Encoding problems and graphs into SAT problems...",
-                    indent(indent_level + 2),
-                    style("[3/4]").bold().dim(),
-                );
-            }
-
-            let pb = get_progress_bar(encoders.len() as u64, 2);
-            pb.set_style(get_progress_style());
-            pb.set_message("Encoding problems and graphs into SAT problems");
-
-            let encodings = pb
-                .wrap_iter(encoders.iter())
-                .map(|encoder| encoder.encode())
-                .collect_vec();
-            info!(
-                "Encoded {} SAT problems in {} s",
-                encodings.len(),
-                now.elapsed().as_secs_f32()
-            );
-
-            // Solve SAT problems.
-            let now = Instant::now();
-            if verbosity >= 3 {
-                eprintln!(
-                    "{}{} Solving SAT problems...",
-                    indent(indent_level + 2),
-                    style("[4/4]").bold().dim(),
-                );
-            }
-            pb.finish_and_clear();
-
-            let mut unsat_result_index = None;
-
-            let pb = get_progress_bar(encodings.len() as u64, 2);
-            pb.set_style(get_progress_style());
-            pb.set_message("Solving SAT problems");
-            pb.set_length(encoders.len() as u64);
-            for (i, encoding) in encodings.iter().enumerate() {
-                let result = SatSolver::solve(&encoding);
-                pb.inc(1);
-                if result == SatResult::Unsatisfiable {
-                    unsat_result_index = Some(i);
-                    break;
-                }
-            }
-
-            if verbosity >= 3 {
-                if unsat_result_index.is_some() {
+            'graph_size_loop: for (i, n) in (n_lower..=n_upper).enumerate() {
+                let graphs_n = &graphs[i];
+                if verbosity >= 2 {
                     eprintln!(
-                        "{}{}",
-                        indent(indent_level + 2),
-                        style("A lower bound found!").green()
-                    );
-                } else {
-                    eprintln!(
-                        "{}{}",
-                        indent(indent_level + 2),
-                        style("No lower bound found.").red()
+                        "{}{} Starting the routine for graphs of size {}...",
+                        indent(indent_level),
+                        style(format!("[{}/{}]", i + 1, n_upper - n_lower + 1))
+                            .bold()
+                            .dim(),
+                        style(format!("n={}", n)).cyan(),
                     );
                 }
-            }
+                // Create SAT encoders.
+                let now = Instant::now();
+                if verbosity >= 3 {
+                    eprintln!(
+                        "{}{} Creating SAT encoders...",
+                        indent(indent_level + 2),
+                        style("[2/4]").bold().dim(),
+                    );
+                }
 
-            info!(
-                "Time used for solving SAT problems is {} s",
-                now.elapsed().as_secs_f32()
-            );
-            if unsat_result_index.is_some() {
-                let graph = encoders[unsat_result_index.unwrap()].get_graph();
-                let dot = graph.graph.get_dot();
+                let pb = get_progress_bar(graphs_n.len() as u64, 2);
+                pb.set_style(get_progress_style());
+                pb.set_message("Creating SAT encoders");
+                let encoders = pb
+                    .wrap_iter(graphs_n.into_iter())
+                    .map(|graph| SatEncoder::new(&problem, graph.clone())) // TODO use immutable reference instead of cloning.
+                    .collect_vec();
 
-                results.push((problem.clone(), graph.graph.node_count()));
+                pb.finish_and_clear();
 
-                if let Some(path) = matches_find.value_of("output_svg") {
-                    save_as_svg(path, &dot).expect("Failed to save graph as svg.");
-                    if verbosity >= 2 {
-                        eprintln!("{} '{}'", style("Saved the graph to path").green(), path);
+                // Encode graphs and LCL-problem into SAT problems.
+                if verbosity >= 3 {
+                    eprintln!(
+                        "{}{} Encoding problems and graphs into SAT problems...",
+                        indent(indent_level + 2),
+                        style("[3/4]").bold().dim(),
+                    );
+                }
+
+                let pb = get_progress_bar(encoders.len() as u64, 2);
+                pb.set_style(get_progress_style());
+                pb.set_message("Encoding problems and graphs into SAT problems");
+
+                let encodings = pb
+                    .wrap_iter(encoders.iter())
+                    .map(|encoder| encoder.encode())
+                    .collect_vec();
+                info!(
+                    "Encoded {} SAT problems in {} s",
+                    encodings.len(),
+                    now.elapsed().as_secs_f32()
+                );
+
+                // Solve SAT problems.
+                let now = Instant::now();
+                if verbosity >= 3 {
+                    eprintln!(
+                        "{}{} Solving SAT problems...",
+                        indent(indent_level + 2),
+                        style("[4/4]").bold().dim(),
+                    );
+                }
+                pb.finish_and_clear();
+
+                let mut unsat_result_index = None;
+
+                let pb = get_progress_bar(encodings.len() as u64, 2);
+                pb.set_style(get_progress_style());
+                pb.set_message("Solving SAT problems");
+                pb.set_length(encoders.len() as u64);
+                for (i, encoding) in encodings.iter().enumerate() {
+                    let result = SatSolver::solve(&encoding);
+                    pb.inc(1);
+                    if result == SatResult::Unsatisfiable {
+                        unsat_result_index = Some(i);
+                        break;
                     }
                 }
-                if !matches_find.is_present("all") {
-                    break 'graph_size_loop;
+
+                if verbosity >= 3 {
+                    if unsat_result_index.is_some() {
+                        eprintln!(
+                            "{}{}",
+                            indent(indent_level + 2),
+                            style("A lower bound found!").green()
+                        );
+                    } else {
+                        eprintln!(
+                            "{}{}",
+                            indent(indent_level + 2),
+                            style("No lower bound found.").red()
+                        );
+                    }
+                }
+
+                info!(
+                    "Time used for solving SAT problems is {} s",
+                    now.elapsed().as_secs_f32()
+                );
+                if unsat_result_index.is_some() {
+                    let graph = encoders[unsat_result_index.unwrap()].get_graph();
+                    let dot = graph.graph.get_dot();
+
+                    results.push((problem.clone(), graph.graph.node_count()));
+
+                    if let Some(path) = matches_find.value_of("output_svg") {
+                        save_as_svg(path, &dot).expect("Failed to save graph as svg.");
+                        if verbosity >= 2 {
+                            eprintln!("{} '{}'", style("Saved the graph to path").green(), path);
+                        }
+                    }
+                    if !matches_find.is_present("all") {
+                        break 'graph_size_loop;
+                    }
                 }
             }
-        }
-    }
+            results
+        })
+        .collect();
 
-    pb_problems.finish_with_message("Finding lower bound proofs done!");
+    eprintln!(
+        "Found new lower bounds for {}/{} problems",
+        results.len(),
+        problems.len()
+    );
 
     for (problem, graph_node_count) in results {
         println!("n = {:2}: {}", graph_node_count, problem.to_string());
