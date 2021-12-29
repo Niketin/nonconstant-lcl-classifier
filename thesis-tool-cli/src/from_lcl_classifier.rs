@@ -33,14 +33,18 @@ pub fn fetch_problems(
     active_degree: i16,
     passive_degree: i16,
     label_count: i16,
+    modulo: Option<(u16, u16)>,
 ) -> Result<Vec<LclProblem>, Box<dyn std::error::Error>> {
     use postgres::{Client, NoTls};
     let mut client = Client::connect(database_path, NoTls)?;
 
+    let (remainder, modulus) = modulo.unwrap_or((0, 1));
+    assert!(remainder < modulus, "Remainder ({}) should be less than modulus ({})", remainder, modulus);
+
     //TODO Make degree and label_count filters optional.
 
     let query_str = format!("
-        SELECT id, active_degree, passive_degree, label_count, active_constraints, passive_constraints
+    SELECT id, active_degree, passive_degree, label_count, active_constraints, passive_constraints
         FROM problems
         WHERE
             is_tree = TRUE AND
@@ -50,8 +54,9 @@ pub fn fetch_problems(
             det_lower_bound = $1 AND
             active_degree = $2 AND
             passive_degree = $3 AND
-            label_count = $4
-            ORDER BY id"
+            label_count = $4 AND
+            id % $5 = $6
+        ORDER BY id"
     );
     let query = client.query(
         query_str.as_str(),
@@ -60,6 +65,8 @@ pub fn fetch_problems(
             &active_degree,
             &passive_degree,
             &label_count,
+            &(modulus as i32),
+            &(remainder as i32),
         ],
     )?;
 

@@ -1,5 +1,5 @@
 use crate::from_lcl_classifier::fetch_problems;
-use clap::{value_t_or_exit, ArgMatches};
+use clap::{value_t_or_exit, ArgMatches, values_t};
 use indicatif::{ParallelProgressIterator, ProgressFinish};
 use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
@@ -97,7 +97,11 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
             let passive_degree = value_t_or_exit!(sub_m, "passive_degree", i16);
             let label_count = value_t_or_exit!(sub_m, "label_count", i16);
             let db_path = sub_m.value_of("database_path").unwrap();
-            let mut problems = fetch_problems(db_path, active_degree, passive_degree, label_count)
+            let modulo = values_t!(sub_m, "modulo", u16).ok();
+
+            let modulo = modulo.map(|v| (v[0], v[1]));
+
+            let mut problems = fetch_problems(db_path, active_degree, passive_degree, label_count, modulo)
                 .expect(
                     format!(
                         "Failed to fetch problems from lcl classifier database at {}",
