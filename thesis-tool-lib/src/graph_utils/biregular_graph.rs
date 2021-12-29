@@ -9,9 +9,6 @@ use log::info;
 use petgraph::graph::NodeIndex;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::mem;
-use std::sync::mpsc;
-use std::thread;
 
 /// Container for biregular graph.
 ///
@@ -88,7 +85,7 @@ impl BiregularGraph {
         let max_edge_multiplicity = max_degree;
         let parts = num_cpus::get();
 
-        let asd = (0usize..parts)
+        let multigraphs = (0usize..parts)
             .into_par_iter()
             .map(|i| {
                 let mut multigraphs: Vec<((usize, usize), String)> = Vec::new();
@@ -151,7 +148,7 @@ impl BiregularGraph {
             .flatten()
             .collect();
 
-            asd
+        multigraphs
     }
 }
 
