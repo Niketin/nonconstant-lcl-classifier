@@ -65,7 +65,6 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
     let pb_gen_problems = get_progress_bar(0, 1);
     pb_gen_problems.set_style(get_spinner());
     pb_gen_problems.enable_steady_tick(100);
-
     pb_gen_problems.set_message("Defining problem(s)");
 
     // Read a problem or generate class of problems.
@@ -133,11 +132,14 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
     pb_gen_problems.set_style(get_progress_style_no_speed());
     pb_gen_problems.finish_with_message("Defining problem(s) done!");
 
+    // Assume all active partitions have same degree.
     let deg_a = problems
         .first()
         .unwrap()
         .active
         .get_labels_per_configuration();
+
+    // Assume all passive partitions have same degree.
     let deg_p = problems
         .first()
         .unwrap()
@@ -155,7 +157,7 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
     pb_graphs.enable_steady_tick(100);
 
     for n in n_lower..=n_upper {
-        // Generate biregular graphs.
+        // Get biregular graphs from cache or generate them.
         let now = Instant::now();
         let graphs_n = BiregularGraph::get_or_generate(n, deg_a, deg_p, graph_cache.as_mut());
         info!(
@@ -189,66 +191,37 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
             let mut results = vec![];
 
             'graph_size_loop: for graphs_n in &graphs {
-                // Create SAT encoders.
-
                 let now = Instant::now();
 
-                let pb = get_progress_bar(graphs_n.len() as u64, 2);
-                pb.set_style(get_progress_style());
-                pb.set_message("Creating SAT encoders");
-                let encoders = pb
-                    .wrap_iter(graphs_n.into_iter())
-                    .map(|graph| SatEncoder::new(&problem, graph.clone())) // TODO use immutable reference instead of cloning.
-                    .collect_vec();
-
-                pb.finish_and_clear();
-
-                // Encode graphs and LCL-problem into SAT problems.
-                let pb = get_progress_bar(encoders.len() as u64, 2);
-                pb.set_style(get_progress_style());
-                pb.set_message("Encoding problems and graphs into SAT problems");
-
-                let encodings = pb
-                    .wrap_iter(encoders.iter())
-                    .map(|encoder| encoder.encode())
-                    .collect_vec();
-                info!(
-                    "Encoded {} SAT problems in {} s",
-                    encodings.len(),
-                    now.elapsed().as_secs_f32()
-                );
+                // Create SAT encoders.
+                let encoders = graphs_n
+                    .into_iter()
+                    .map(|graph| SatEncoder::new(&problem, graph.clone())); // TODO use immutable reference instead of cloning.
 
                 // Solve SAT problems.
-
-                let now = Instant::now();
-                pb.finish_and_clear();
-
                 let mut unsat_result_index = None;
-
-                let pb = get_progress_bar(encodings.len() as u64, 2);
-                pb.set_style(get_progress_style());
-                pb.set_message("Solving SAT problems");
-                pb.set_length(encoders.len() as u64);
-                for (i, encoding) in encodings.iter().enumerate() {
-                    let result = SatSolver::solve(&encoding);
-                    pb.inc(1);
+                for encoder in encoders {
+                    let result = SatSolver::solve(&encoder.encode());
                     if result == SatResult::Unsatisfiable {
-                        unsat_result_index = Some(i);
+                        unsat_result_index = Some(encoder);
                         break;
                     }
                 }
 
                 info!(
-                    "Time used for solving SAT problems is {} s",
+                    "Time used for encoding and solving SAT problems is {} s",
                     now.elapsed().as_secs_f32()
                 );
+
                 if unsat_result_index.is_some() {
-                    let graph = encoders[unsat_result_index.unwrap()].get_graph();
+                    let encoder = unsat_result_index.unwrap();
+                    let graph = encoder.get_graph();
                     let dot = graph.graph.get_dot();
 
                     results.push((problem.clone(), graph.graph.node_count()));
 
                     if let Some(path) = matches_find.value_of("output_svg") {
+                        // TODO save all results as svg, not just the last. Currently the latest svg overrides previous svgs.
                         save_as_svg(path, &dot).expect("Failed to save graph as svg.");
                     }
                     if !matches_find.is_present("all") {
@@ -265,9 +238,15 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
     }
 
     if matches_find.is_present("print_stats") {
+        let uniques_len = if matches_find.is_present("all") {
+            // This is needed to show the real unique result problem count.
+            results.iter().unique_by(|(p, _)| p).count()
+        } else {
+            results.len()
+        };
         eprintln!(
             "Found new lower bounds for {}/{} problems",
-            results.len(),
+            uniques_len,
             problems.len()
         );
 
