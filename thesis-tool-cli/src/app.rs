@@ -63,6 +63,10 @@ fn get_subcommand_find() -> App<'static, 'static> {
         .help("Sets the level of verbosity")
         .multiple(true);
 
+    let print_stats = Arg::with_name("print_stats")
+        .long("stats")
+        .help("Prints different stats of results after finding them");
+
     let sqlite_cache = Arg::with_name("sqlite_cache")
         .help("Path to an sqlite database that will be used as a cache")
         .long_help(indoc! {"
@@ -97,6 +101,7 @@ fn get_subcommand_find() -> App<'static, 'static> {
             all,
             output_svg,
             verbosity,
+            print_stats,
             sqlite_cache,
         ])
         .subcommands([subcommand_single, subcommand_class, subcommand_fetch_from_lcl_classifier_db])

@@ -54,7 +54,7 @@ pub fn fetch_problems(database_path: &str) -> Result<Vec<LclProblem>, Box<dyn st
                 active_configuration.as_str(),
                 passive_configuration.as_str(),
             )
-            .expect("Could not parse a LCL problem from LCL classifier's database"),
+            .expect("Could not parse an LCL problem from LCL classifier's database"),
         );
     }
     // TODO remove these temporary checks

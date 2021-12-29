@@ -305,14 +305,28 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
         })
         .collect();
 
-    eprintln!(
-        "Found new lower bounds for {}/{} problems",
-        results.len(),
-        problems.len()
-    );
-
-    for (problem, graph_node_count) in results {
+    for (problem, graph_node_count) in &results {
         println!("n = {:2}: {}", graph_node_count, problem.to_string());
+    }
+
+    if matches_find.is_present("print_stats") {
+        eprintln!(
+            "Found new lower bounds for {}/{} problems",
+            results.len(),
+            problems.len()
+        );
+
+        let sizes = results
+            .iter()
+            .map(|(_, n)| *n)
+            .unique()
+            .sorted()
+            .collect_vec();
+
+        for n in sizes {
+            let count = results.iter().filter(|(_, size)| n == *size).count();
+            eprintln!("n = {:2}; count = {:5}", n, count);
+        }
     }
 
     Ok(())
