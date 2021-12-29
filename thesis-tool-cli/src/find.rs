@@ -6,6 +6,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
 use log::info;
 use rayon::prelude::*;
+use thesis_tool_lib::lcl_problem::{Purgeable, Normalizable};
 use std::{path::PathBuf, str::FromStr, time::Instant};
 use thesis_tool_lib::{
     caches::{GraphSqliteCache, LclProblemSqliteCache},
@@ -96,13 +97,27 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
         }
         ("from_classifier", Some(sub_m)) => {
             let db_path = sub_m.value_of("database_path").unwrap();
-            fetch_problems(db_path).expect(
+            let mut problems = fetch_problems(db_path).expect(
                 format!(
                     "Failed to fetch problems from lcl classifier database at {}",
                     db_path
                 )
                 .as_str(),
-            )
+            );
+
+            if sub_m.is_present("purge") {
+                let old_count = problems.len();
+                problems = problems.purge();
+                pb_gen_problems.println(format!("Purging removed {} problems", old_count - problems.len()));
+            }
+
+            if sub_m.is_present("normalize") {
+                let old_count = problems.len();
+                problems = problems.normalize();
+                pb_gen_problems.println(format!("Normalizing removed {} problems", old_count - problems.len()));
+            }
+
+            problems
         }
         (_, _) => unreachable!(),
     };

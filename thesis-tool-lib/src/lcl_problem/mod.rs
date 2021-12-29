@@ -55,7 +55,7 @@ impl LclProblem {
     /// on the other configuration set, are considered redundant.
     ///
     /// Adapted from https://github.com/AleksTeresh/lcl-classifier/blob/be5d0196b02dad33ee19657af6b16457f59780e9/src/server/problem/problem.py#L378
-    fn purge(&mut self) {
+    pub fn purge(&mut self) {
         let mut active_labels = self.active.get_labels_set();
         let mut passive_labels = self.passive.get_labels_set();
 
@@ -298,6 +298,38 @@ impl Ord for LclProblem {
         self.active
             .cmp(&other.active)
             .then_with(|| self.passive.cmp(&other.passive))
+    }
+}
+
+pub trait Purgeable<T> {
+    fn purge(self) -> Vec<T>;
+}
+
+pub trait Normalizable<T> {
+    fn normalize(self) -> Vec<T>;
+}
+
+impl Purgeable<LclProblem> for Vec<LclProblem> {
+    fn purge(self) -> Vec<LclProblem> {
+        self.into_iter()
+            .filter_map(|mut problem| {
+                problem.purge();
+                if !problem.contains_empty_partition() {
+                    return Some(problem);
+                }
+                None
+            })
+            .unique()
+            .collect_vec()
+    }
+}
+
+impl Normalizable<LclProblem> for Vec<LclProblem> {
+    fn normalize(self) -> Vec<LclProblem> {
+        self.into_iter()
+            .update(|p| p.normalize())
+            .unique()
+            .collect_vec()
     }
 }
 

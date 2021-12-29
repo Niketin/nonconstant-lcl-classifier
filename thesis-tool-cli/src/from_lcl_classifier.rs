@@ -1,6 +1,9 @@
 use itertools::Itertools;
 use postgres_types::{FromSql, ToSql};
-use thesis_tool_lib::LclProblem;
+use thesis_tool_lib::{
+    lcl_problem::{Normalizable, Purgeable},
+    LclProblem,
+};
 
 #[derive(Debug, ToSql, FromSql)]
 #[postgres(name = "complexity")]
