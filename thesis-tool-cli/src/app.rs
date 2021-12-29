@@ -58,11 +58,6 @@ fn get_subcommand_find() -> App<'static, 'static> {
         .long("svg")
         .takes_value(true);
 
-    let verbosity = Arg::with_name("verbosity")
-        .short("v")
-        .help("Sets the level of verbosity")
-        .multiple(true);
-
     let print_stats = Arg::with_name("print_stats")
         .long("stats")
         .help("Prints different stats of results after finding them");
@@ -100,7 +95,6 @@ fn get_subcommand_find() -> App<'static, 'static> {
             progress,
             all,
             output_svg,
-            verbosity,
             print_stats,
             sqlite_cache,
         ])

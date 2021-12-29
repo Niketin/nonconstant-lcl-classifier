@@ -1,6 +1,5 @@
 use crate::from_lcl_classifier::fetch_problems;
 use clap::{value_t_or_exit, ArgMatches};
-use console::style;
 use indicatif::{ParallelProgressIterator, ProgressFinish};
 use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
@@ -14,7 +13,6 @@ use thesis_tool_lib::{
 };
 
 pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
-    let verbosity = matches_find.occurrences_of("verbosity");
     let progress = matches_find.occurrences_of("progress");
     let n_lower = value_t_or_exit!(matches_find, "min_nodes", usize);
     let n_upper = value_t_or_exit!(matches_find, "max_nodes", usize);
@@ -156,12 +154,6 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
     ));
     pb_graphs.enable_steady_tick(100);
 
-    if verbosity >= 1 {
-        eprintln!(
-            "Generating nonisomorphic ({},{})-biregular graphs...",
-            deg_a, deg_p,
-        );
-    }
     for n in n_lower..=n_upper {
         // Generate biregular graphs.
         let now = Instant::now();
@@ -193,42 +185,13 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
     let results: Vec<(LclProblem, usize)> = problems
         .par_iter()
         .progress_with(pb_problems)
-        .enumerate()
-        .flat_map(|(problem_i, problem)| {
-            if verbosity >= 1 {
-                eprintln!(
-                    "Finding for problem {}...",
-                    style(format!("[{}/{}]", problem_i + 1, problems.len()))
-                        .bold()
-                        .dim(),
-                );
-            }
-
-            let indent_level = 2;
-
+        .flat_map(|problem| {
             let mut results = vec![];
 
-            'graph_size_loop: for (i, n) in (n_lower..=n_upper).enumerate() {
-                let graphs_n = &graphs[i];
-                if verbosity >= 2 {
-                    eprintln!(
-                        "{}{} Starting the routine for graphs of size {}...",
-                        indent(indent_level),
-                        style(format!("[{}/{}]", i + 1, n_upper - n_lower + 1))
-                            .bold()
-                            .dim(),
-                        style(format!("n={}", n)).cyan(),
-                    );
-                }
+            'graph_size_loop: for graphs_n in &graphs {
                 // Create SAT encoders.
+
                 let now = Instant::now();
-                if verbosity >= 3 {
-                    eprintln!(
-                        "{}{} Creating SAT encoders...",
-                        indent(indent_level + 2),
-                        style("[2/4]").bold().dim(),
-                    );
-                }
 
                 let pb = get_progress_bar(graphs_n.len() as u64, 2);
                 pb.set_style(get_progress_style());
@@ -241,14 +204,6 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
                 pb.finish_and_clear();
 
                 // Encode graphs and LCL-problem into SAT problems.
-                if verbosity >= 3 {
-                    eprintln!(
-                        "{}{} Encoding problems and graphs into SAT problems...",
-                        indent(indent_level + 2),
-                        style("[3/4]").bold().dim(),
-                    );
-                }
-
                 let pb = get_progress_bar(encoders.len() as u64, 2);
                 pb.set_style(get_progress_style());
                 pb.set_message("Encoding problems and graphs into SAT problems");
@@ -264,14 +219,8 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
                 );
 
                 // Solve SAT problems.
+
                 let now = Instant::now();
-                if verbosity >= 3 {
-                    eprintln!(
-                        "{}{} Solving SAT problems...",
-                        indent(indent_level + 2),
-                        style("[4/4]").bold().dim(),
-                    );
-                }
                 pb.finish_and_clear();
 
                 let mut unsat_result_index = None;
@@ -289,22 +238,6 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
                     }
                 }
 
-                if verbosity >= 3 {
-                    if unsat_result_index.is_some() {
-                        eprintln!(
-                            "{}{}",
-                            indent(indent_level + 2),
-                            style("A lower bound found!").green()
-                        );
-                    } else {
-                        eprintln!(
-                            "{}{}",
-                            indent(indent_level + 2),
-                            style("No lower bound found.").red()
-                        );
-                    }
-                }
-
                 info!(
                     "Time used for solving SAT problems is {} s",
                     now.elapsed().as_secs_f32()
@@ -317,9 +250,6 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
 
                     if let Some(path) = matches_find.value_of("output_svg") {
                         save_as_svg(path, &dot).expect("Failed to save graph as svg.");
-                        if verbosity >= 2 {
-                            eprintln!("{} '{}'", style("Saved the graph to path").green(), path);
-                        }
                     }
                     if !matches_find.is_present("all") {
                         break 'graph_size_loop;
@@ -355,8 +285,4 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
     }
 
     Ok(())
-}
-
-fn indent(level: usize) -> String {
-    format!("{:<1$}", "", level)
 }
