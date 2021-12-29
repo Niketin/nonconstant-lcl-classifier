@@ -158,6 +158,18 @@ fn get_subcommand_fetch_from_lcl_classifier_db() -> App<'static, 'static> {
         "})
         .value_name("database_path")
         .required(true);
+    let active_degree = Arg::with_name("active_degree")
+        .help("Degree of the active partition")
+        .takes_value(true)
+        .required(true);
+    let passive_degree = Arg::with_name("passive_degree")
+        .help("Degree of the passive partition")
+        .takes_value(true)
+        .required(true);
+    let label_count = Arg::with_name("label_count")
+        .help("Count of the labels used in the problems")
+        .takes_value(true)
+        .required(true);
     let purge = Arg::with_name("purge")
         .short("p")
         .long("purge")
@@ -175,7 +187,14 @@ fn get_subcommand_fetch_from_lcl_classifier_db() -> App<'static, 'static> {
             i.e. all problems for which we can possibly improve the lowerbound.
             For each problem, it tries to find a lowerbound of \"non-constant\"
         "})
-        .args(&[purge, normalize, db_path])
+        .args(&[
+            purge,
+            normalize,
+            active_degree,
+            passive_degree,
+            label_count,
+            db_path,
+        ])
 }
 
 fn get_subcommand_generate() -> App<'static, 'static> {

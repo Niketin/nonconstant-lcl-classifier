@@ -1,9 +1,6 @@
 use itertools::Itertools;
 use postgres_types::{FromSql, ToSql};
-use thesis_tool_lib::{
-    lcl_problem::{Normalizable, Purgeable},
-    LclProblem,
-};
+use thesis_tool_lib::LclProblem;
 
 #[derive(Debug, ToSql, FromSql)]
 #[postgres(name = "complexity")]
@@ -31,12 +28,40 @@ enum Complexity {
 ///
 /// For example
 /// ```"postgresql://postgres:pass@localhost/db"```
-pub fn fetch_problems(database_path: &str) -> Result<Vec<LclProblem>, Box<dyn std::error::Error>> {
+pub fn fetch_problems(
+    database_path: &str,
+    active_degree: i16,
+    passive_degree: i16,
+    label_count: i16,
+) -> Result<Vec<LclProblem>, Box<dyn std::error::Error>> {
     use postgres::{Client, NoTls};
     let mut client = Client::connect(database_path, NoTls)?;
 
-    let query_str = "SELECT id, active_degree, passive_degree, label_count, active_constraints, passive_constraints FROM problems WHERE is_tree = TRUE AND det_lower_bound = $1 ORDER BY id";
-    let query = client.query(query_str, &[&Complexity::Constant])?;
+    //TODO Make degree and label_count filters optional.
+
+    let query_str = format!("
+        SELECT id, active_degree, passive_degree, label_count, active_constraints, passive_constraints
+        FROM problems
+        WHERE
+            is_tree = TRUE AND
+            actives_all_same = FALSE AND
+            passives_all_same = FALSE AND
+            is_directed_or_rooted = FALSE AND
+            det_lower_bound = $1 AND
+            active_degree = $2 AND
+            passive_degree = $3 AND
+            label_count = $4
+            ORDER BY id"
+    );
+    let query = client.query(
+        query_str.as_str(),
+        &[
+            &Complexity::Constant,
+            &active_degree,
+            &passive_degree,
+            &label_count,
+        ],
+    )?;
 
     let mut problems = Vec::with_capacity(query.len());
 
@@ -60,12 +85,6 @@ pub fn fetch_problems(database_path: &str) -> Result<Vec<LclProblem>, Box<dyn st
             .expect("Could not parse an LCL problem from LCL classifier's database"),
         );
     }
-    // TODO remove these temporary checks
-    // use adler::Adler32;
-    // let mut adler = Adler32::new();
-    // let b = problems.iter().flat_map(|x| x.as_bytes()).collect_vec();
-    // adler.write_slice(&b);
-    // eprintln!("Adler-32 checksum: {}", adler.checksum());
 
     Ok(problems)
 }
