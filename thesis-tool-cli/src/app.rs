@@ -158,6 +158,14 @@ fn get_subcommand_fetch_from_lcl_classifier_db() -> App<'static, 'static> {
         "})
         .value_name("database_path")
         .required(true);
+    let purge = Arg::with_name("purge")
+        .short("p")
+        .long("purge")
+        .help("Removes redundant problems");
+    let normalize = Arg::with_name("normalize")
+        .short("n")
+        .long("normalize")
+        .help("Normalizes problems");
     SubCommand::with_name("from_classifier")
         .about("Fetch problems from LCL-classifier's database")
         .long_about(indoc! {"
@@ -167,7 +175,7 @@ fn get_subcommand_fetch_from_lcl_classifier_db() -> App<'static, 'static> {
             i.e. all problems for which we can possibly improve the lowerbound.
             For each problem, it tries to find a lowerbound of \"non-constant\"
         "})
-        .args(&[db_path])
+        .args(&[purge, normalize, db_path])
 }
 
 fn get_subcommand_generate() -> App<'static, 'static> {
