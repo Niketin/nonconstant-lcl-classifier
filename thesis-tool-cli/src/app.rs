@@ -164,6 +164,13 @@ fn get_subcommand_fetch_from_lcl_classifier_db() -> App<'static, 'static> {
         .help("Count of the labels used in the problems")
         .takes_value(true)
         .required(true);
+    let modulo = Arg::with_name("modulo")
+        .help("Only find subset of results")
+        .long("mod")
+        .takes_value(true)
+        .min_values(2)
+        .max_values(2)
+        .value_names(&["reminder", "modulus"]);
     let purge = Arg::with_name("purge")
         .short("p")
         .long("purge")
@@ -187,6 +194,7 @@ fn get_subcommand_fetch_from_lcl_classifier_db() -> App<'static, 'static> {
             active_degree,
             passive_degree,
             label_count,
+            modulo,
             db_path,
         ])
 }
