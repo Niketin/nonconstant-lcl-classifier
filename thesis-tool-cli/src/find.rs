@@ -6,8 +6,8 @@ use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
 use log::info;
 use rayon::prelude::*;
-use thesis_tool_lib::lcl_problem::{Purgeable, Normalizable};
 use std::{path::PathBuf, str::FromStr, time::Instant};
+use thesis_tool_lib::lcl_problem::{Normalizable, Purgeable};
 use thesis_tool_lib::{
     caches::{GraphSqliteCache, LclProblemSqliteCache},
     save_as_svg, BiregularGraph, DotFormat, LclProblem, SatEncoder, SatResult, SatSolver,
@@ -96,25 +96,35 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
             )
         }
         ("from_classifier", Some(sub_m)) => {
+            let active_degree = value_t_or_exit!(sub_m, "active_degree", i16);
+            let passive_degree = value_t_or_exit!(sub_m, "passive_degree", i16);
+            let label_count = value_t_or_exit!(sub_m, "label_count", i16);
             let db_path = sub_m.value_of("database_path").unwrap();
-            let mut problems = fetch_problems(db_path).expect(
-                format!(
-                    "Failed to fetch problems from lcl classifier database at {}",
-                    db_path
-                )
-                .as_str(),
-            );
+            let mut problems = fetch_problems(db_path, active_degree, passive_degree, label_count)
+                .expect(
+                    format!(
+                        "Failed to fetch problems from lcl classifier database at {}",
+                        db_path
+                    )
+                    .as_str(),
+                );
 
             if sub_m.is_present("purge") {
                 let old_count = problems.len();
                 problems = problems.purge();
-                pb_gen_problems.println(format!("Purging removed {} problems", old_count - problems.len()));
+                pb_gen_problems.println(format!(
+                    "Purging removed {} problems",
+                    old_count - problems.len()
+                ));
             }
 
             if sub_m.is_present("normalize") {
                 let old_count = problems.len();
                 problems = problems.normalize();
-                pb_gen_problems.println(format!("Normalizing removed {} problems", old_count - problems.len()));
+                pb_gen_problems.println(format!(
+                    "Normalizing removed {} problems",
+                    old_count - problems.len()
+                ));
             }
 
             problems
