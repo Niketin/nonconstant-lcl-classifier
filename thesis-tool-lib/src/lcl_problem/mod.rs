@@ -12,6 +12,7 @@ use std::{
     io::Write,
     path::PathBuf,
 };
+use std::string::ToString;
 
 use crate::caches::{lcl_problem::LclProblemCacheParams, Cache};
 
@@ -247,14 +248,17 @@ impl LclProblem {
         Ok(())
     }
 
+}
+
+impl ToString for LclProblem {
     /// Returns a string representation of the problem.
     ///
     /// Supports up to 7 different labels.
     /// The labels are the 7 first letters in the alphabet.
     ///
     /// An example of a problem:
-    /// ```['AAB', 'AAC']; ['AB', 'AC] ```
-    pub fn to_string(&self) -> String {
+    /// ```AAB AAC; AB AC```
+    fn to_string(&self) -> String {
         let labels = "ABCDEFG";
         let configurations = [&self.active, &self.passive];
         let configurations_string = configurations
@@ -268,9 +272,9 @@ impl LclProblem {
                             .iter()
                             .map(|&l| labels.chars().nth(l as usize).unwrap())
                             .collect_vec();
-                        format!("\'{}\'", c.iter().join(""))
+                        format!("{}", c.iter().join(""))
                     });
-                format!("[{}]", conf.join(", "))
+                format!("{}", conf.join(" "))
             })
             .collect_vec();
         format!("{}", configurations_string.join("; "))
