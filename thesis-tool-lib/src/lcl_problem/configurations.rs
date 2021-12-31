@@ -10,7 +10,7 @@ use std::{
 /// A container for set of configurations that are used to define an LCL problem.
 ///
 /// A configuration is a multiset of labels.
-/// A new Configuration can be created by using method [`Configurations::new`].
+/// A new Configuration can be created by using method [`Configurations::from_string`].
 ///
 /// Contained configurations can be accessed with different methods.
 /// It is also possible to access all unique permutations of each configuration with [`Configurations::get_permutations`].
@@ -34,40 +34,38 @@ impl Configurations {
     /// ```
     /// use std::collections::HashMap;
     /// # use thesis_tool_lib::Configurations;
-    /// let mut label_map = HashMap::<String, u8>::new();
-    /// let configurations = Configurations::from_string("A B C\nA A B\nC C C", &mut label_map).unwrap();
+    /// let mut label_map = HashMap::<char, u8>::new();
+    /// let configurations = Configurations::from_string("ABC AAB CCC", &mut label_map).unwrap();
     /// ```
     pub fn from_string(
         encoding: &str,
-        label_map: &mut HashMap<String, u8>,
+        label_map: &mut HashMap<char, u8>,
     ) -> Result<Self, Box<dyn Error>> {
-        let mut lines = encoding.lines();
-        let first_line = lines.next();
-        let width = first_line.unwrap().split_ascii_whitespace().count();
 
-        let all_same_length = lines.all(|ref l| l.split_ascii_whitespace().count() == width);
+        let configurations_vec_str = encoding.split_ascii_whitespace().collect_vec();
+        let width = configurations_vec_str.first().unwrap().len();
+
+        let all_same_length = configurations_vec_str.iter().all(|ref l| l.len() == width);
         assert!(all_same_length);
 
-        let mut v = vec![];
-        for line in encoding.lines() {
+        let mut configurations = vec![];
+        for configuration_str in configurations_vec_str {
             let mut configuration = Vec::<u8>::new();
-            for label in line.split_ascii_whitespace() {
+            for label in configuration_str.chars() {
                 //TODO add support for compact notation from the Round eliminator
-                assert_eq!(label.len(), 1, "Labels longer than 1 character are not supported");
-                let value = if label_map.contains_key(label) {
-                    label_map.get(label).unwrap().clone()
+                let value = if label_map.contains_key(&label) {
+                    label_map.get(&label).unwrap().clone()
                 } else {
                     let new_value = label_map.len() as u8;
-                    label_map.insert(String::from(label), new_value);
+                    label_map.insert(label, new_value);
                     new_value
                 };
-
                 configuration.push(value)
             }
-            v.push(configuration);
+            configurations.push(configuration);
         }
 
-        Ok(Configurations { data: v })
+        Ok(Configurations { data: configurations })
     }
 
     pub fn from_configuration_data(
@@ -137,8 +135,8 @@ impl Configurations {
     /// ```
     /// use std::collections::HashMap;
     /// # use thesis_tool_lib::Configurations;
-    /// let mut label_map = HashMap::<String, u8>::new();
-    /// let configurations = Configurations::from_string("A B C", &mut label_map).unwrap();
+    /// let mut label_map = HashMap::<char, u8>::new();
+    /// let configurations = Configurations::from_string("ABC", &mut label_map).unwrap();
     /// let permutations = configurations.get_permutations();
     /// let correct = vec![
     ///     vec![0, 1, 2],
@@ -255,13 +253,13 @@ mod tests {
     #[test]
     fn test_eq() {
         let mut label_map = HashMap::new();
-        label_map.insert("A".to_string(), 0u8);
-        label_map.insert("B".to_string(), 1u8);
-        label_map.insert("C".to_string(), 2u8);
+        label_map.insert('A', 0u8);
+        label_map.insert('B', 1u8);
+        label_map.insert('C', 2u8);
 
-        let c0 = Configurations::from_string("A B B\nC C C", &mut label_map).unwrap();
-        let c1 = Configurations::from_string("A B\nB C\nC C", &mut label_map).unwrap();
-        let c2 = Configurations::from_string("A B\nB C\nC C", &mut label_map).unwrap();
+        let c0 = Configurations::from_string("ABB CCC", &mut label_map).unwrap();
+        let c1 = Configurations::from_string("AB BC CC", &mut label_map).unwrap();
+        let c2 = Configurations::from_string("AB BC CC", &mut label_map).unwrap();
 
         assert_ne!(c0, c1);
         assert_eq!(c1, c2);
@@ -270,14 +268,14 @@ mod tests {
     #[test]
     fn test_sort() {
         let mut label_map = HashMap::new();
-        label_map.insert("M".to_string(), 0u8);
-        label_map.insert("U".to_string(), 1u8);
-        label_map.insert("P".to_string(), 2u8);
+        label_map.insert('M', 0u8);
+        label_map.insert('U', 1u8);
+        label_map.insert('P', 2u8);
 
-        let mut c0 = Configurations::from_string("M U U\nP P P", &mut label_map).unwrap();
-        let mut c1 = Configurations::from_string("U M U\nP P P", &mut label_map).unwrap();
-        let mut c2 = Configurations::from_string("P P P\nU U M", &mut label_map).unwrap();
-        let mut c3 = Configurations::from_string("M P P\nU U M", &mut label_map).unwrap();
+        let mut c0 = Configurations::from_string("MUU PPP", &mut label_map).unwrap();
+        let mut c1 = Configurations::from_string("UMU PPP", &mut label_map).unwrap();
+        let mut c2 = Configurations::from_string("PPP UUM", &mut label_map).unwrap();
+        let mut c3 = Configurations::from_string("MPP UUM", &mut label_map).unwrap();
 
         // Different configurations at first.
         assert_ne!(c0, c1);

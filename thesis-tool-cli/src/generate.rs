@@ -40,7 +40,7 @@ fn generate_problems(matches_problems: &ArgMatches) -> Result<(), Box<dyn std::e
     );
 
     for problem in problems {
-        println!("{}", problem.to_string());
+        println!("0: {}", problem.to_string());
     }
     Ok(())
 }

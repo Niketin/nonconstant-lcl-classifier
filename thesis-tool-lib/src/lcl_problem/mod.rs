@@ -34,7 +34,7 @@ impl Hash for LclProblem {
 
 impl LclProblem {
     pub fn new(a: &str, p: &str) -> Result<LclProblem, Box<dyn std::error::Error>> {
-        let mut label_map: HashMap<String, u8> = HashMap::new();
+        let mut label_map: HashMap<char, u8> = HashMap::new();
         Ok(LclProblem {
             active: Configurations::from_string(a, &mut label_map)?,
             passive: Configurations::from_string(p, &mut label_map)?,
@@ -55,7 +55,7 @@ impl LclProblem {
     /// Configurations, that contain some label l such that l is not in any configuration
     /// on the other configuration set, are considered redundant.
     ///
-    /// Adapted from https://github.com/AleksTeresh/lcl-classifier/blob/be5d0196b02dad33ee19657af6b16457f59780e9/src/server/problem/problem.py#L378
+    /// Adapted from <https://github.com/AleksTeresh/lcl-classifier/blob/be5d0196b02dad33ee19657af6b16457f59780e9/src/server/problem/problem.py#L378>
     pub fn purge(&mut self) {
         let mut active_labels = self.active.get_labels_set();
         let mut passive_labels = self.passive.get_labels_set();
@@ -253,13 +253,13 @@ impl LclProblem {
 impl ToString for LclProblem {
     /// Returns a string representation of the problem.
     ///
-    /// Supports up to 7 different labels.
-    /// The labels are the 7 first letters in the alphabet.
+    /// Supports up to 26 different labels.
+    /// The labels are the 26 letters in the English alphabet.
     ///
     /// An example of a problem:
     /// ```AAB AAC; AB AC```
     fn to_string(&self) -> String {
-        let labels = "ABCDEFG";
+        let labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
         let configurations = [&self.active, &self.passive];
         let configurations_string = configurations
             .iter()
@@ -345,8 +345,8 @@ mod tests {
 
     #[test]
     fn test_new_lcl_problem() {
-        const A: &'static str = "M U U\nP P P";
-        const P: &'static str = "M M\nP U\nU U";
+        const A: &'static str = "MUU PPP";
+        const P: &'static str = "MM PU UU";
 
         let problem = LclProblem::new(A, P);
 
@@ -355,16 +355,16 @@ mod tests {
 
     #[test]
     fn test_normalize() {
-        const A0: &'static str = "M U U\nP P P";
-        const P0: &'static str = "M M\nP U\nU U";
+        const A0: &'static str = "MUU PPP";
+        const P0: &'static str = "MM PU UU";
         let mut problem0 = LclProblem::new(A0, P0).unwrap();
 
-        const A1: &'static str = "X X X\n U U M";
-        const P1: &'static str = "M M\nX U\nU U";
+        const A1: &'static str = "XXX UUM";
+        const P1: &'static str = "MM XU UU";
         let mut problem1 = LclProblem::new(A1, P1).unwrap();
 
-        const A2: &'static str = "P P P\n U U U";
-        const P2: &'static str = "M M\nP U\nU U";
+        const A2: &'static str = "PPP UUU";
+        const P2: &'static str = "MM PU UU";
         let mut problem2 = LclProblem::new(A2, P2).unwrap();
 
         assert_ne!(problem0, problem1);

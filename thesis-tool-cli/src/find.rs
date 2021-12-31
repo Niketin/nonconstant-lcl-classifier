@@ -1,10 +1,14 @@
 use crate::from_lcl_classifier::fetch_problems;
-use clap::{value_t_or_exit, ArgMatches, values_t};
+use crate::from_stdin::from_stdin;
+use clap::{value_t_or_exit, values_t, ArgMatches};
 use indicatif::{ParallelProgressIterator, ProgressFinish};
 use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
 use log::info;
+use rayon::iter::IntoParallelRefIterator;
 use rayon::prelude::*;
+use std::fs::File;
+use std::io::{BufWriter, Write};
 use std::{path::PathBuf, str::FromStr, time::Instant};
 use thesis_tool_lib::lcl_problem::{Normalizable, Purgeable};
 use thesis_tool_lib::{
@@ -101,8 +105,8 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
 
             let modulo = modulo.map(|v| (v[0], v[1]));
 
-            let mut problems = fetch_problems(db_path, active_degree, passive_degree, label_count, modulo)
-                .expect(
+            let mut problems =
+                fetch_problems(db_path, active_degree, passive_degree, label_count, modulo).expect(
                     format!(
                         "Failed to fetch problems from lcl classifier database at {}",
                         db_path
@@ -128,6 +132,12 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
                 ));
             }
 
+            problems
+        }
+        ("from_stdin", Some(_)) => {
+            let problems =
+                from_stdin().expect(format!("Failed to read problems from stdin",).as_str());
+            assert!(problems.len() > 0, "No problems were given to stdin",);
             problems
         }
         (_, _) => unreachable!(),
@@ -233,28 +243,35 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
                     }
                 }
             }
+
+            if results.is_empty() {
+                results.push((problem.clone(), 0));
+            }
+
             results
         })
         .collect();
 
-    for (problem, graph_node_count) in &results {
-        println!("n = {:2}: {}", graph_node_count, problem.to_string());
+    let (old_results, new_results): (_, Vec<_>) = results.into_iter().partition(|(_, n)| *n == 0);
+
+    for (problem, graph_node_count) in &new_results {
+        println!("{}: {}", graph_node_count, problem.to_string());
     }
 
     if matches_find.is_present("print_stats") {
-        let uniques_len = if matches_find.is_present("all") {
+        let new_uniques_len = if matches_find.is_present("all") {
             // This is needed to show the real unique result problem count.
-            results.iter().unique_by(|(p, _)| p).count()
+            new_results.iter().unique_by(|(p, _)| p).count()
         } else {
-            results.len()
+            new_results.len()
         };
         eprintln!(
             "Found new lower bounds for {}/{} problems",
-            uniques_len,
-            problems.len()
+            new_uniques_len,
+            old_results.len() + new_uniques_len
         );
 
-        let sizes = results
+        let sizes = new_results
             .iter()
             .map(|(_, n)| *n)
             .unique()
@@ -262,8 +279,17 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
             .collect_vec();
 
         for n in sizes {
-            let count = results.iter().filter(|(_, size)| n == *size).count();
+            let count = new_results.iter().filter(|(_, size)| n == *size).count();
             eprintln!("n = {:2}; count = {:5}", n, count);
+        }
+    }
+
+    if let Some(path) = matches_find.value_of("write_old_result") {
+        let f = File::create(path).expect("Unable to create file");
+        let mut f = BufWriter::new(f);
+        for (p, n) in &old_results {
+            f.write_all(format!("{}: {}\n", n, p.to_string()).as_bytes())
+                .expect("Unable to write data");
         }
     }
 

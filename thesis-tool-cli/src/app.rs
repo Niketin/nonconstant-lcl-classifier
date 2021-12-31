@@ -62,6 +62,13 @@ fn get_subcommand_find() -> App<'static, 'static> {
         .long("stats")
         .help("Prints different stats of results after finding them");
 
+    let write_old_results = Arg::with_name("write_old_result")
+        .help("Path where old results will be written")
+        .takes_value(true)
+        .value_name("path_to_old_results")
+        .short("o")
+        .long("write-old");
+
     let sqlite_cache = Arg::with_name("sqlite_cache")
         .help("Path to an sqlite database that will be used as a cache")
         .long_help(indoc! {"
@@ -77,6 +84,7 @@ fn get_subcommand_find() -> App<'static, 'static> {
 
     let subcommand_single = get_subcommand_single();
     let subcommand_class = get_subcommand_class();
+    let subcommand_file = get_subcommand_from_stdin();
     let subcommand_fetch_from_lcl_classifier_db = get_subcommand_fetch_from_lcl_classifier_db();
 
     SubCommand::with_name("find")
@@ -97,8 +105,9 @@ fn get_subcommand_find() -> App<'static, 'static> {
             output_svg,
             print_stats,
             sqlite_cache,
+            write_old_results,
         ])
-        .subcommands([subcommand_single, subcommand_class, subcommand_fetch_from_lcl_classifier_db])
+        .subcommands([subcommand_single, subcommand_class, subcommand_file, subcommand_fetch_from_lcl_classifier_db])
 }
 
 fn get_subcommand_class() -> App<'static, 'static> {
@@ -130,12 +139,14 @@ fn get_subcommand_single() -> App<'static, 'static> {
         .help("Sets the active configurations of the LCL-problem")
         .takes_value(true)
         .min_values(1)
+        .max_values(1)
         .required(true);
     let passive_configurations = Arg::with_name("passive_configurations")
         .short("P")
         .help("Sets the passive configurations of the LCL-problem")
         .takes_value(true)
         .min_values(1)
+        .max_values(1)
         .required(true);
     SubCommand::with_name("single")
         .about("Runs for a single problem")
@@ -197,6 +208,33 @@ fn get_subcommand_fetch_from_lcl_classifier_db() -> App<'static, 'static> {
             modulo,
             db_path,
         ])
+}
+
+fn get_subcommand_from_stdin() -> App<'static, 'static> {
+    SubCommand::with_name("from_stdin")
+        .about("Read problems from stdin")
+        .long_about(indoc! {"
+        Read problems from stdin.
+
+        Problems have to be from same problem class.
+
+        Uses only the problems that have no counter example yet, i.e. <graph_size> is 0.
+
+        File should have one problem on each line.
+        Each problem should be in the following format:
+            [<graph_size>]: <problem>
+        For example:
+            2: ABC CCC; AA BB BC
+            0: AB CC; AA BB BC
+        A positive <graph_size> notates that there is a counter example of size <graph_size>.
+        problem that has <graph_size> of 0 has no counter example yet.
+
+        The '<problem>' part is of form:
+            <configuration> ...; <configuration> ...
+        For example:
+            ABC CCC; AA BB BC
+    "})
+        .args(&[])
 }
 
 fn get_subcommand_generate() -> App<'static, 'static> {

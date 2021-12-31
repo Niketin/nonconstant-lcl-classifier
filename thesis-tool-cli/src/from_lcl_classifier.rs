@@ -45,18 +45,18 @@ pub fn fetch_problems(
 
     let query_str = format!("
     SELECT id, active_degree, passive_degree, label_count, active_constraints, passive_constraints
-        FROM problems
-        WHERE
-            is_tree = TRUE AND
-            actives_all_same = FALSE AND
-            passives_all_same = FALSE AND
-            is_directed_or_rooted = FALSE AND
-            det_lower_bound = $1 AND
-            active_degree = $2 AND
-            passive_degree = $3 AND
-            label_count = $4 AND
-            id % $5 = $6
-        ORDER BY id"
+    FROM problems
+    WHERE
+        is_tree = TRUE AND
+        actives_all_same = FALSE AND
+        passives_all_same = FALSE AND
+        is_directed_or_rooted = FALSE AND
+        det_lower_bound = $1 AND
+        active_degree = $2 AND
+        passive_degree = $3 AND
+        label_count = $4 AND
+        id % $5 = $6
+    ORDER BY id"
     );
     let query = client.query(
         query_str.as_str(),

@@ -20,8 +20,8 @@ mod tests {
     #[test]
     fn test_lcl_on_n4_graphs_unsatisfiable() -> Result<(), Box<dyn std::error::Error>> {
         let n = 4;
-        let a = "S S";
-        let p = "K K";
+        let a = "SS";
+        let p = "KK";
         let lcl_problem = LclProblem::new(a, p)?;
         let deg_a = lcl_problem.active.get_labels_per_configuration();
         let deg_p = lcl_problem.passive.get_labels_per_configuration();
@@ -44,8 +44,8 @@ mod tests {
     fn test_lcl_on_n4_graphs_satisfiable() -> Result<(), Box<dyn std::error::Error>> {
         let n = 5;
 
-        let a = "M U U\nP P P";
-        let p = "M M\nP U\nU U";
+        let a = "MUU PPP";
+        let p = "MM PU UU";
         let lcl_problem = LclProblem::new(a, p)?;
         let deg_a = lcl_problem.active.get_labels_per_configuration();
         let deg_p = lcl_problem.passive.get_labels_per_configuration();
@@ -68,8 +68,8 @@ mod tests {
         let n_min = 1;
         let n_max = 10;
 
-        let a = "M U U\nP P P";
-        let p = "M M\nP U\nU U";
+        let a = "MUU PPP";
+        let p = "MM PU UU";
         let lcl_problem = LclProblem::new(a, p)?;
         let deg_a = lcl_problem.active.get_labels_per_configuration();
         let deg_p = lcl_problem.passive.get_labels_per_configuration();
@@ -106,8 +106,8 @@ mod tests {
     fn test_satisfiable_on_small_graph() -> Result<(), Box<dyn std::error::Error>> {
         let n = 2;
 
-        let a = "1 2 3";
-        let p = "1 2 3";
+        let a = "123";
+        let p = "123";
         let lcl_problem = LclProblem::new(a, p)?;
         let deg_a = lcl_problem.active.get_labels_per_configuration();
         let deg_p = lcl_problem.passive.get_labels_per_configuration();

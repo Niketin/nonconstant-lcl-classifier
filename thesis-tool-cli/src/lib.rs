@@ -4,6 +4,7 @@ pub mod find;
 pub mod from_lcl_classifier;
 pub mod generate;
 pub mod utils;
+pub mod from_stdin;
 
 use crate::create_cache::create_cache;
 use crate::find::find;
