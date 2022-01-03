@@ -16,8 +16,7 @@ use thesis_tool_lib::LclProblem;
 /// 2: AA AB BC CC; AC BB
 /// 0: AA AB AC BB CC; AA AB AC BB BC CC
 /// ```
-pub fn from_stdin() -> Result<Vec<LclProblem>, Box<dyn std::error::Error>> {
-
+pub fn from_stdin(ignore_solved: bool) -> Result<Vec<LclProblem>, Box<dyn std::error::Error>> {
     let stdin = io::stdin();
     let lines = stdin.lock().lines();
 
@@ -32,7 +31,7 @@ pub fn from_stdin() -> Result<Vec<LclProblem>, Box<dyn std::error::Error>> {
                 .expect("Line was not in correct format");
             let n: usize = n_str.parse().expect("Graph size was not an integer");
 
-            if n > 0 {
+            if ignore_solved && n > 0 {
                 return None;
             }
 

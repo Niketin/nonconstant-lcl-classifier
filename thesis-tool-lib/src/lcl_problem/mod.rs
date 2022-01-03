@@ -271,8 +271,8 @@ impl ToString for LclProblem {
                         let c = configuration
                             .iter()
                             .map(|&l| labels.chars().nth(l as usize).unwrap())
-                            .collect_vec();
-                        format!("{}", c.iter().join(""))
+                            .join("");
+                        format!("{}", c)
                     });
                 format!("{}", conf.join(" "))
             })
