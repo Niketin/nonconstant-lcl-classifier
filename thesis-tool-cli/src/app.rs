@@ -8,7 +8,8 @@ use indoc::indoc;
 pub fn build_cli() -> App<'static, 'static> {
     let subcommand_find = get_subcommand_find();
     let subcommand_generate = get_subcommand_generate();
-    let subcommand_create_cache = get_subcommand_create_sql_cache(); //TODO add the functionality behind this command
+    let subcommand_create_cache = get_subcommand_create_sql_cache();
+    let subcommand_import_problems_from_lcl_classifier_db = get_subcommand_import_problems_from_lcl_classifier_db();
 
     App::new("Thesis tool")
         .version("0.3.0")
@@ -17,6 +18,7 @@ pub fn build_cli() -> App<'static, 'static> {
             subcommand_find,
             subcommand_generate,
             subcommand_create_cache,
+            subcommand_import_problems_from_lcl_classifier_db
         ])
         .about("This tool can be used to find lower bound proofs for LCL-problems")
         .long_about(indoc! {"
@@ -85,7 +87,6 @@ fn get_subcommand_find() -> App<'static, 'static> {
     let subcommand_single = get_subcommand_single();
     let subcommand_class = get_subcommand_class();
     let subcommand_file = get_subcommand_from_stdin();
-    let subcommand_fetch_from_lcl_classifier_db = get_subcommand_fetch_from_lcl_classifier_db();
 
     SubCommand::with_name("find")
         .setting(AppSettings::SubcommandRequired)
@@ -107,7 +108,7 @@ fn get_subcommand_find() -> App<'static, 'static> {
             sqlite_cache,
             write_old_results,
         ])
-        .subcommands([subcommand_single, subcommand_class, subcommand_file, subcommand_fetch_from_lcl_classifier_db])
+        .subcommands([subcommand_single, subcommand_class, subcommand_file])
 }
 
 fn get_subcommand_class() -> App<'static, 'static> {
@@ -153,7 +154,7 @@ fn get_subcommand_single() -> App<'static, 'static> {
         .args(&[active_configurations, passive_configurations])
 }
 
-fn get_subcommand_fetch_from_lcl_classifier_db() -> App<'static, 'static> {
+fn get_subcommand_import_problems_from_lcl_classifier_db() -> App<'static, 'static> {
     let db_path = Arg::with_name("database_path")
         .help("Path to an PostgreSQL database used by the LCL-classifier")
         .long_help(indoc! {"
@@ -190,14 +191,16 @@ fn get_subcommand_fetch_from_lcl_classifier_db() -> App<'static, 'static> {
         .short("n")
         .long("normalize")
         .help("Normalizes problems");
-    SubCommand::with_name("from_classifier")
+    SubCommand::with_name("fetch_problems")
         .about("Fetch problems from LCL-classifier's database")
         .long_about(indoc! {"
             Fetch problems from LCL-classifier's database.
 
-            Queries all problems that have unknown lowerbound
+            Queries all problems that have constant lowerbound
             i.e. all problems for which we can possibly improve the lowerbound.
-            For each problem, it tries to find a lowerbound of \"non-constant\"
+            For each problem, it tries to find a lowerbound of \"non-constant\".
+
+            Problems are outputed to stdout.
         "})
         .args(&[
             purge,
@@ -211,6 +214,10 @@ fn get_subcommand_fetch_from_lcl_classifier_db() -> App<'static, 'static> {
 }
 
 fn get_subcommand_from_stdin() -> App<'static, 'static> {
+    let no_ignore = Arg::with_name("no_ignore")
+        .short("n")
+        .long("no-ignore")
+        .help("Do not ignore problems with counterexamples");
     SubCommand::with_name("from_stdin")
         .about("Read problems from stdin")
         .long_about(indoc! {"
@@ -218,7 +225,7 @@ fn get_subcommand_from_stdin() -> App<'static, 'static> {
 
         Problems have to be from same problem class.
 
-        Uses only the problems that have no counter example yet, i.e. <graph_size> is 0.
+        By defualt, uses only the problems that have no counter example yet, i.e. <graph_size> is 0.
 
         File should have one problem on each line.
         Each problem should be in the following format:
@@ -234,7 +241,7 @@ fn get_subcommand_from_stdin() -> App<'static, 'static> {
         For example:
             ABC CCC; AA BB BC
     "})
-        .args(&[])
+        .args(&[no_ignore])
 }
 
 fn get_subcommand_generate() -> App<'static, 'static> {

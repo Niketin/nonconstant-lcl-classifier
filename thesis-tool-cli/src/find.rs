@@ -1,6 +1,5 @@
-use crate::from_lcl_classifier::fetch_problems;
 use crate::from_stdin::from_stdin;
-use clap::{value_t_or_exit, values_t, ArgMatches};
+use clap::{value_t_or_exit, ArgMatches};
 use indicatif::{ParallelProgressIterator, ProgressFinish};
 use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
@@ -10,7 +9,6 @@ use rayon::prelude::*;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::{path::PathBuf, str::FromStr, time::Instant};
-use thesis_tool_lib::lcl_problem::{Normalizable, Purgeable};
 use thesis_tool_lib::{
     caches::{GraphSqliteCache, LclProblemSqliteCache},
     save_as_svg, BiregularGraph, DotFormat, LclProblem, SatEncoder, SatResult, SatSolver,
@@ -89,6 +87,7 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
             let active_degree = value_t_or_exit!(sub_m, "active_degree", usize);
             let passive_degree = value_t_or_exit!(sub_m, "passive_degree", usize);
             let label_count = value_t_or_exit!(sub_m, "label_count", usize);
+
             LclProblem::get_or_generate_normalized(
                 active_degree,
                 passive_degree,
@@ -96,47 +95,10 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
                 problem_cache.as_mut(),
             )
         }
-        ("from_classifier", Some(sub_m)) => {
-            let active_degree = value_t_or_exit!(sub_m, "active_degree", i16);
-            let passive_degree = value_t_or_exit!(sub_m, "passive_degree", i16);
-            let label_count = value_t_or_exit!(sub_m, "label_count", i16);
-            let db_path = sub_m.value_of("database_path").unwrap();
-            let modulo = values_t!(sub_m, "modulo", u16).ok();
-
-            let modulo = modulo.map(|v| (v[0], v[1]));
-
-            let mut problems =
-                fetch_problems(db_path, active_degree, passive_degree, label_count, modulo).expect(
-                    format!(
-                        "Failed to fetch problems from lcl classifier database at {}",
-                        db_path
-                    )
-                    .as_str(),
-                );
-
-            if sub_m.is_present("purge") {
-                let old_count = problems.len();
-                problems = problems.purge();
-                pb_gen_problems.println(format!(
-                    "Purging removed {} problems",
-                    old_count - problems.len()
-                ));
-            }
-
-            if sub_m.is_present("normalize") {
-                let old_count = problems.len();
-                problems = problems.normalize();
-                pb_gen_problems.println(format!(
-                    "Normalizing removed {} problems",
-                    old_count - problems.len()
-                ));
-            }
-
-            problems
-        }
-        ("from_stdin", Some(_)) => {
+        ("from_stdin", Some(sub_m)) => {
+            let no_ignore_solved = sub_m.is_present("no_ignore");
             let problems =
-                from_stdin().expect(format!("Failed to read problems from stdin",).as_str());
+                from_stdin(!no_ignore_solved).expect(format!("Failed to read problems from stdin",).as_str());
             assert!(problems.len() > 0, "No problems were given to stdin",);
             problems
         }
@@ -234,9 +196,13 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
 
                     results.push((problem.clone(), graph.graph.node_count()));
 
-                    if let Some(path) = matches_find.value_of("output_svg") {
-                        // TODO save all results as svg, not just the last. Currently the latest svg overrides previous svgs.
-                        save_as_svg(path, &dot).expect("Failed to save graph as svg.");
+                    if matches_find.is_present("output_svg") {
+                        save_as_svg(
+                            format!("{}: {}.svg", graph.graph.node_count(), problem.to_string())
+                                .as_str(),
+                            &dot,
+                        )
+                        .expect("Failed to save graph as svg.");
                     }
                     if !matches_find.is_present("all") {
                         break 'graph_size_loop;
