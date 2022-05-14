@@ -38,10 +38,36 @@ fn get_subcommand_find() -> App<'static, 'static> {
         .help("Sets the maximum number of nodes for the generated graphs")
         .required(true);
 
-    let all = Arg::with_name("all")
-        .help("Finds not only the first, but all lower bound proofs")
+    let all_graphs = Arg::with_name("all_graphs")
+        .help("Finds all counterexamples at graph loop with fixed node count")
+        .long_help(indoc! {"
+            Finds all counterexamples at graph loop with fixed node count.
+
+            Basically never breaks the inner-most loop:
+                let problem = ...;
+                for n in graph_sizes:
+                    for graph in graphs_of_size_n: // THIS LOOP
+                        find_counterexample(graph, problem);
+                        ...
+            "})
+        .short("A")
+        .long("all-graphs")
+        .required(false);
+
+    let all_graph_sizes = Arg::with_name("all_graph_sizes")
+        .help("Finds all counterexamples with different node counts")
+        .long_help(indoc! {"
+            Finds all counterexamples with different node counts.
+
+            Basically never breaks the 2nd inner-most loop:
+                let problem = ...;
+                for n in graph_sizes: // THIS LOOP
+                    for graph in graphs_of_size_n:
+                        find_counterexample(graph, problem);
+                        ...
+            "})
         .short("a")
-        .long("all")
+        .long("all-graph-sizes")
         .required(false);
 
     let progress = Arg::with_name("progress")
@@ -56,8 +82,8 @@ fn get_subcommand_find() -> App<'static, 'static> {
         .multiple(true);
 
     let output_svg = Arg::with_name("output_svg")
-        .help("If a lower bound proof is found, output graph as svg to the path")
-        .long("svg")
+        .help("Output counterexample graphs as svg to the given directory")
+        .long("svg-dir")
         .takes_value(true);
 
     let print_stats = Arg::with_name("print_stats")
@@ -102,7 +128,8 @@ fn get_subcommand_find() -> App<'static, 'static> {
             min_nodes,
             max_nodes,
             progress,
-            all,
+            all_graphs,
+            all_graph_sizes,
             output_svg,
             print_stats,
             sqlite_cache,
