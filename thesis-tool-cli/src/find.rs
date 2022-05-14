@@ -1,12 +1,12 @@
 use crate::from_stdin::from_stdin;
-use clap::{value_t_or_exit, ArgMatches};
+use clap::{value_t, value_t_or_exit, ArgMatches};
 use indicatif::{ParallelProgressIterator, ProgressFinish};
 use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
 use log::info;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::prelude::*;
-use std::fs::File;
+use std::fs::{create_dir_all, File};
 use std::io::{BufWriter, Write};
 use std::{path::PathBuf, str::FromStr, time::Instant};
 use thesis_tool_lib::{
@@ -97,8 +97,8 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
         }
         ("from_stdin", Some(sub_m)) => {
             let no_ignore_solved = sub_m.is_present("no_ignore");
-            let problems =
-                from_stdin(!no_ignore_solved).expect(format!("Failed to read problems from stdin",).as_str());
+            let problems = from_stdin(!no_ignore_solved)
+                .expect(format!("Failed to read problems from stdin",).as_str());
             assert!(problems.len() > 0, "No problems were given to stdin",);
             problems
         }
@@ -167,46 +167,44 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
             let mut results = vec![];
 
             'graph_size_loop: for graphs_n in &graphs {
-                let now = Instant::now();
-
-                // Create SAT encoders.
+                // Create SAT encoder iterator.
                 let encoders = graphs_n
                     .into_iter()
                     .map(|graph| SatEncoder::new(&problem, graph.clone())); // TODO use immutable reference instead of cloning.
 
+                let mut found = 0;
+
                 // Solve SAT problems.
-                let mut unsat_result_index = None;
-                for encoder in encoders {
+                'encoder_loop: for encoder in encoders {
                     let result = SatSolver::solve(&encoder.encode());
-                    if result == SatResult::Unsatisfiable {
-                        unsat_result_index = Some(encoder);
-                        break;
+                    if result == SatResult::Satisfiable {
+                        continue;
                     }
-                }
 
-                info!(
-                    "Time used for encoding and solving SAT problems is {} s",
-                    now.elapsed().as_secs_f32()
-                );
+                    found += 1;
 
-                if unsat_result_index.is_some() {
-                    let encoder = unsat_result_index.unwrap();
                     let graph = encoder.get_graph();
-                    let dot = graph.graph.get_dot();
 
+                    // Save the problem and node count.
                     results.push((problem.clone(), graph.graph.node_count()));
 
-                    if matches_find.is_present("output_svg") {
-                        save_as_svg(
-                            format!("{}: {}.svg", graph.graph.node_count(), problem.to_string())
-                                .as_str(),
-                            &dot,
-                        )
-                        .expect("Failed to save graph as svg.");
+                    if let Some(path_dir) = matches_find.value_of("output_svg") {
+                        let dot = graph.graph.get_dot();
+                        create_dir_all(path_dir).unwrap();
+                        let mut path_buf = PathBuf::from(path_dir);
+                        let file_name =
+                            format!("{}; n={}; {}.svg", problem.to_string(), graph.graph.node_count(), found - 1);
+                        path_buf.push(file_name);
+                        let path = path_buf.as_path().to_str().unwrap();
+                        save_as_svg(path, &dot).expect("Failed to save graph as svg.");
                     }
-                    if !matches_find.is_present("all") {
-                        break 'graph_size_loop;
+
+                    if !matches_find.is_present("all_graphs") {
+                        break 'encoder_loop;
                     }
+                }
+                if found > 0 && !matches_find.is_present("all_graph_sizes") {
+                    break 'graph_size_loop;
                 }
             }
 
