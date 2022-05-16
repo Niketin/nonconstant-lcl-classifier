@@ -668,7 +668,7 @@ dependencies = [
 
 [[package]]
 name = "nonconstant-lcl-classifier-cli"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "clap",
  "console",
@@ -686,7 +686,7 @@ dependencies = [
 
 [[package]]
 name = "nonconstant-lcl-classifier-lib"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "bincode",
  "criterion",
