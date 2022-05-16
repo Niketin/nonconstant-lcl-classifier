@@ -33,7 +33,7 @@ impl Configurations {
     /// # Example
     /// ```
     /// use std::collections::HashMap;
-    /// # use thesis_tool_lib::Configurations;
+    /// # use nonconstant_lcl_classifier_lib::Configurations;
     /// let mut label_map = HashMap::<char, u8>::new();
     /// let configurations = Configurations::from_string("ABC AAB CCC", &mut label_map).unwrap();
     /// ```
@@ -134,7 +134,7 @@ impl Configurations {
     /// # Example
     /// ```
     /// use std::collections::HashMap;
-    /// # use thesis_tool_lib::Configurations;
+    /// # use nonconstant_lcl_classifier_lib::Configurations;
     /// let mut label_map = HashMap::<char, u8>::new();
     /// let configurations = Configurations::from_string("ABC", &mut label_map).unwrap();
     /// let permutations = configurations.get_permutations();

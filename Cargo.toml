@@ -1,6 +1,6 @@
 [workspace]
 
 members = [
-    "thesis-tool-cli",
-    "thesis-tool-lib",
+    "nonconstant-lcl-classifier-cli",
+    "nonconstant-lcl-classifier-lib",
 ]

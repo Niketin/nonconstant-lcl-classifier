@@ -1,6 +1,6 @@
-# thesis-tool
+# Nonconstant LCL classifier
 
-A tool to help finding lower bound proofs for LCL-problems.
+A tool that attempts to find a nonconstant lower bound for an LCL-problem.
 
 This work was supported in part by the Academy of Finland, Grant 333837.
 

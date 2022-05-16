@@ -2,10 +2,10 @@ use clap::value_t_or_exit;
 use clap::ArgMatches;
 use std::path::PathBuf;
 use std::str::FromStr;
-use thesis_tool_lib::caches::GraphSqliteCache;
-use thesis_tool_lib::caches::LclProblemSqliteCache;
-use thesis_tool_lib::BiregularGraph;
-use thesis_tool_lib::LclProblem;
+use nonconstant_lcl_classifier_lib::caches::GraphSqliteCache;
+use nonconstant_lcl_classifier_lib::caches::LclProblemSqliteCache;
+use nonconstant_lcl_classifier_lib::BiregularGraph;
+use nonconstant_lcl_classifier_lib::LclProblem;
 
 pub fn generate(matches_generate: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(matches_graphs) = matches_generate.subcommand_matches("graphs") {

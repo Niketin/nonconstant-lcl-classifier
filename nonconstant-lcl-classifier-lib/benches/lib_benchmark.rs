@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use thesis_tool_lib::{caches::LclProblemSqliteCache, Configurations, LclProblem};
+use nonconstant_lcl_classifier_lib::{caches::LclProblemSqliteCache, Configurations, LclProblem};
 
 fn criterion_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("Generate problems");

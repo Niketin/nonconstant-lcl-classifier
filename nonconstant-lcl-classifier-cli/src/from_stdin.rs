@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use std::io::{self, BufRead};
-use thesis_tool_lib::LclProblem;
+use nonconstant_lcl_classifier_lib::LclProblem;
 
 
 /// Read LCL problems from stdin.
