@@ -1,7 +1,7 @@
 use clap::{value_t_or_exit, values_t, ArgMatches};
 use itertools::Itertools;
 use postgres_types::{FromSql, ToSql};
-use thesis_tool_lib::{
+use nonconstant_lcl_classifier_lib::{
     lcl_problem::{Normalizable, Purgeable},
     LclProblem,
 };
@@ -142,7 +142,7 @@ pub fn fetch_problems(
     Ok(problems)
 }
 
-fn configuration_string_from_lcl_classifier_format(encoding: &Vec<String>) -> String {
+fn _configuration_string_from_lcl_classifier_format(encoding: &Vec<String>) -> String {
     encoding.iter().map(|x| x.chars().join(" ")).join("\n")
 }
 

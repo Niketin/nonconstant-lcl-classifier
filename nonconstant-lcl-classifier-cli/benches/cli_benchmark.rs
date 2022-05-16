@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use thesis_tool_cli_lib::utils::create_graphs;
+use nonconstant_lcl_classifier_cli::utils::create_graphs;
 
 fn criterion_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("Generate graphs");

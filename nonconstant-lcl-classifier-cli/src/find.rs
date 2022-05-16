@@ -1,5 +1,5 @@
 use crate::from_stdin::from_stdin;
-use clap::{value_t, value_t_or_exit, ArgMatches};
+use clap::{value_t_or_exit, ArgMatches};
 use indicatif::{ParallelProgressIterator, ProgressFinish};
 use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
@@ -9,7 +9,7 @@ use rayon::prelude::*;
 use std::fs::{create_dir_all, File};
 use std::io::{BufWriter, Write};
 use std::{path::PathBuf, str::FromStr, time::Instant};
-use thesis_tool_lib::{
+use nonconstant_lcl_classifier_lib::{
     caches::{GraphSqliteCache, LclProblemSqliteCache},
     save_as_svg, BiregularGraph, DotFormat, LclProblem, SatEncoder, SatResult, SatSolver,
 };
@@ -216,26 +216,26 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
         })
         .collect();
 
-    let (old_results, new_results): (_, Vec<_>) = results.into_iter().partition(|(_, n)| *n == 0);
+    let (nonproven_results, proven_results): (_, Vec<_>) = results.into_iter().partition(|(_, n)| *n == 0);
 
-    for (problem, graph_node_count) in &new_results {
+    for (problem, graph_node_count) in &proven_results {
         println!("{}: {}", graph_node_count, problem.to_string());
     }
 
     if matches_find.is_present("print_stats") {
         let new_uniques_len = if matches_find.is_present("all") {
             // This is needed to show the real unique result problem count.
-            new_results.iter().unique_by(|(p, _)| p).count()
+            proven_results.iter().unique_by(|(p, _)| p).count()
         } else {
-            new_results.len()
+            proven_results.len()
         };
         eprintln!(
             "Found new lower bounds for {}/{} problems",
             new_uniques_len,
-            old_results.len() + new_uniques_len
+            nonproven_results.len() + new_uniques_len
         );
 
-        let sizes = new_results
+        let sizes = proven_results
             .iter()
             .map(|(_, n)| *n)
             .unique()
@@ -243,15 +243,15 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
             .collect_vec();
 
         for n in sizes {
-            let count = new_results.iter().filter(|(_, size)| n == *size).count();
+            let count = proven_results.iter().filter(|(_, size)| n == *size).count();
             eprintln!("n = {:2}; count = {:5}", n, count);
         }
     }
 
-    if let Some(path) = matches_find.value_of("write_old_result") {
+    if let Some(path) = matches_find.value_of("write_nonproven_result") {
         let f = File::create(path).expect("Unable to create file");
         let mut f = BufWriter::new(f);
-        for (p, n) in &old_results {
+        for (p, n) in &nonproven_results {
             f.write_all(format!("{}: {}\n", n, p.to_string()).as_bytes())
                 .expect("Unable to write data");
         }

@@ -1,17 +1,9 @@
 [package]
-name = "thesis_tool_cli"
+name = "nonconstant-lcl-classifier-cli"
 version = "0.3.0"
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[lib]
-name = "thesis_tool_cli_lib"
-path = "src/lib.rs"
-
-[[bin]]
-name = "thesis_tool_cli"
-path = "src/main.rs"
 
 [dev-dependencies]
 criterion = "0.3"
@@ -28,7 +20,7 @@ log = "0.4.14"
 indicatif = {version = "0.16.2", features = ["rayon"]}
 console = "0.15.0"
 indoc = "1.0.3"
-thesis_tool_lib = { path = "../thesis-tool-lib" }
+nonconstant-lcl-classifier-lib = { path = "../nonconstant-lcl-classifier-lib" }
 postgres = "0.19.2"
 postgres-types = { version = "0.2.2", features = ["derive"] }
 rayon = "1.5.1"

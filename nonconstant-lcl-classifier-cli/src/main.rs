@@ -1,7 +1,7 @@
 use std::error::Error;
 
-use thesis_tool_cli_lib::app::build_cli;
-use thesis_tool_cli_lib::run_subcommand;
+use nonconstant_lcl_classifier_cli::app::build_cli;
+use nonconstant_lcl_classifier_cli::run_subcommand;
 
 fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
@@ -16,7 +16,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 #[cfg(test)]
 mod cli_tests {
     use std::error::Error;
-    use thesis_tool_cli_lib::utils::*;
+    use nonconstant_lcl_classifier_cli::utils::*;
 
     #[test]
     fn test_create_cache() -> Result<(), Box<dyn Error>> {

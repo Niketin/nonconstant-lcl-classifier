@@ -90,12 +90,12 @@ fn get_subcommand_find() -> App<'static, 'static> {
         .long("stats")
         .help("Prints different stats of results after finding them");
 
-    let write_old_results = Arg::with_name("write_old_result")
-        .help("Path where old results will be written")
+    let write_nonproven_results = Arg::with_name("write_nonproven_result")
+        .help("Path where nonproven results will be written")
         .takes_value(true)
-        .value_name("path_to_old_results")
+        .value_name("path_to_nonproven_results")
         .short("o")
-        .long("write-old");
+        .long("write-nonproven");
 
     let sqlite_cache = Arg::with_name("sqlite_cache")
         .help("Path to an sqlite database that will be used as a cache")
@@ -133,7 +133,7 @@ fn get_subcommand_find() -> App<'static, 'static> {
             output_svg,
             print_stats,
             sqlite_cache,
-            write_old_results,
+            write_nonproven_results,
         ])
         .subcommands([subcommand_single, subcommand_class, subcommand_file])
 }
