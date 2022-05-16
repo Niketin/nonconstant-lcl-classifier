@@ -11,7 +11,7 @@ pub fn build_cli() -> App<'static, 'static> {
     let subcommand_create_cache = get_subcommand_create_sql_cache();
     let subcommand_import_problems_from_lcl_classifier_db = get_subcommand_import_problems_from_lcl_classifier_db();
 
-    App::new("Thesis tool")
+    App::new("Nonconstant LCL classifier")
         .version("0.3.0")
         .setting(ArgRequiredElseHelp)
         .subcommands([
@@ -20,11 +20,12 @@ pub fn build_cli() -> App<'static, 'static> {
             subcommand_create_cache,
             subcommand_import_problems_from_lcl_classifier_db
         ])
-        .about("This tool can be used to find lower bound proofs for LCL-problems")
+        .about("This tool can be used to find nonconstant lower bounds for LCL-problems in the LOCAL model")
         .long_about(indoc! {"
-        This tool can be used to find lower bound proofs for LCL-problems.
+        This tool can be used to find nonconstant lower bounds for LCL-problems in the LOCAL model.
 
-        TODO
+        It tries to find a counterexample multigraph, in which the problem is unsolvable in the PN model.
+        This implies that the problem is not solvable in constant time in the LOCAL model.
         "})
 }
 
