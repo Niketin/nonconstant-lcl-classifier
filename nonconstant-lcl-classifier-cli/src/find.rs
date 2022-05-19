@@ -176,7 +176,7 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
 
                 // Solve SAT problems.
                 'encoder_loop: for encoder in encoders {
-                    let result = SatSolver::solve(&encoder.encode());
+                    let result = SatSolver::solve(encoder.encode());
                     if result == SatResult::Satisfiable {
                         continue;
                     }

@@ -16,7 +16,7 @@ harness = false
 petgraph = { version = "0.6.0", features = ["serde-1"] }
 graph6 = "2.0.1"
 itertools = "0.10.1"
-picorust = { git = "https://github.com/lambdaxymox/picorust" }
+kissat-rs = { git = "https://github.com/firefighterduck/kissat-rs", branch = "main", version = "0.1" }
 env_logger = "0.9.0"
 log = "0.4.14"
 dirs = "4.0.0"
