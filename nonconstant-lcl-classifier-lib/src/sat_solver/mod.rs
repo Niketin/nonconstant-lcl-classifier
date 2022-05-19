@@ -1,6 +1,5 @@
 use crate::sat_encoder::Clauses;
-use picorust::picosat;
-
+use kissat_rs;
 /// Enumerator for SAT solver's result.
 #[derive(Debug, PartialEq)]
 pub enum SatResult {
@@ -16,27 +15,16 @@ pub enum SatResult {
 pub struct SatSolver {}
 
 impl SatSolver {
-    /// Solves SAT problem using PicoSAT.
+    /// Solves SAT problem using Kissat SAT solver.
     ///
     /// Returns enumerator [`SatResult`] stating the solver's result.
-    pub fn solve(clauses: &Clauses) -> SatResult {
-        let mut psat = picosat::init();
+    pub fn solve(clauses: Clauses) -> SatResult {
 
-        for clause in clauses.iter() {
-            for var in clause.iter() {
-                picosat::add(&mut psat, *var);
-            }
-            picosat::add(&mut psat, 0);
-        }
+        let unsat_result = kissat_rs::Solver::decide_formula(clauses).unwrap();
 
-        let result = picosat::sat(&mut psat, -1);
-
-        picosat::reset(&mut psat);
-
-        return match result {
-            10 => SatResult::Satisfiable,
-            20 => SatResult::Unsatisfiable,
-            _ => unimplemented!("Unknown result"),
+        return match unsat_result {
+            true => SatResult::Satisfiable,
+            false => SatResult::Unsatisfiable,
         };
     }
 }
@@ -49,7 +37,7 @@ mod tests {
     fn test_solver_returns_satisfiable() {
         // Simple CNF satisfiability problem that is satisfiable.
         let clauses = vec![vec![1, -2, 3, 4]];
-        let result = SatSolver::solve(&clauses);
+        let result = SatSolver::solve(clauses);
         assert_eq!(result, SatResult::Satisfiable);
     }
 
@@ -57,7 +45,7 @@ mod tests {
     fn test_solver_returns_unsatisfiable() {
         // Simple CNF satisfiability problem that is unsatisfiable.
         let clauses = vec![vec![1], vec![-1]];
-        let result = SatSolver::solve(&clauses);
+        let result = SatSolver::solve(clauses);
         assert_eq!(result, SatResult::Unsatisfiable);
     }
 }

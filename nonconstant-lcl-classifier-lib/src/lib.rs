@@ -33,7 +33,7 @@ mod tests {
         graphs.into_iter().for_each(|graph| {
             let sat_encoder = SatEncoder::new(&lcl_problem, graph);
             let clauses = sat_encoder.encode();
-            let result = SatSolver::solve(&clauses);
+            let result = SatSolver::solve(clauses);
             assert_eq!(result, SatResult::Unsatisfiable);
         });
 
@@ -56,7 +56,7 @@ mod tests {
         graphs.into_iter().for_each(|graph| {
             let sat_encoder = SatEncoder::new(&lcl_problem, graph);
             let clauses = sat_encoder.encode();
-            let result = SatSolver::solve(&clauses);
+            let result = SatSolver::solve(clauses);
             assert_eq!(result, SatResult::Satisfiable);
         });
 
@@ -84,7 +84,7 @@ mod tests {
                     .map(|graph| {
                         let sat_encoder = SatEncoder::new(&lcl_problem, graph);
                         let clauses = sat_encoder.encode();
-                        SatSolver::solve(&clauses)
+                        SatSolver::solve(clauses)
                     })
                     .collect_vec()
             })
@@ -122,7 +122,7 @@ mod tests {
                 let sat_encoder = SatEncoder::new(&lcl_problem, graph);
                 let clauses = sat_encoder.encode();
                 sat_encoder.print_clauses(&clauses);
-                SatSolver::solve(&clauses)
+                SatSolver::solve(clauses)
             })
             .collect_vec();
 

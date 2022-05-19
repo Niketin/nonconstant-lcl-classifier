@@ -107,6 +107,7 @@ impl LclProblem {
 
     /// Generate all unique problems of a class (cached).
     ///
+    /// TODO this is not really cached, and should be named accordingly.
     /// Uses `Self::purge` for each generated problem and
     /// removes problems with empty partition from the result.
     pub fn get_or_generate(
@@ -399,5 +400,80 @@ mod tests {
         let problems =
             LclProblem::get_or_generate_normalized::<LclProblemSqliteCache>(3, 2, 3, None);
         assert_eq!(problems.len(), 7735);
+    }
+
+    pub fn generate(
+        active_degree: usize,
+        passive_degree: usize,
+        alphabet_length: u8,
+    ) -> Vec<LclProblem> {
+        let active_configuration_powerset =
+            Configurations::generate_powerset(active_degree, alphabet_length);
+
+        let passive_configuration_powerset = Configurations::generate_powerset(
+            passive_degree,
+            alphabet_length,
+        );
+
+        let cartesian_product = active_configuration_powerset.iter().cartesian_product(
+            passive_configuration_powerset
+                .iter(),
+        );
+
+        let purged = cartesian_product
+            .map(|(active, passive)| {
+                LclProblem::from_configurations(active.clone(), passive.clone())
+            })
+            .collect_vec();
+
+        purged
+    }
+
+    #[test]
+    fn test_generate() {
+        assert_eq!(generate(1,1,1).len(), 1);
+        assert_eq!(generate(1,1,2).len(), 9);
+        assert_eq!(generate(2,1,2).len(), 21);
+        assert_eq!(generate(2,2,2).len(), 49);
+        assert_eq!(generate(3,2,2).len(), 105);
+        assert_eq!(generate(4,2,2).len(), 217);
+        assert_eq!(generate(4,3,2).len(), 465);
+        assert_eq!(generate(4,4,2).len(), 961);
+        assert_eq!(generate(6,6,2).len(), 16129);
+        assert_eq!(generate(2,2,3).len(), 3969);
+        assert_eq!(generate(3,2,3).len(), 64449);
+        //assert_eq!(generate(3,3,3).len(), 1046529);
+    }
+
+    #[test]
+    fn test_gen_purged() {
+        assert_eq!(LclProblem::get_or_generate(1,1,1).len(), 1);
+        assert_eq!(LclProblem::get_or_generate(1,1,2).len(), 3);
+        assert_eq!(LclProblem::get_or_generate(2,1,2).len(), 7);
+        assert_eq!(LclProblem::get_or_generate(2,2,2).len(), 27);
+        assert_eq!(LclProblem::get_or_generate(3,2,2).len(), 67);
+        assert_eq!(LclProblem::get_or_generate(4,2,2).len(), 147);
+        assert_eq!(LclProblem::get_or_generate(4,3,2).len(), 379);
+        assert_eq!(LclProblem::get_or_generate(4,4,2).len(), 843);
+        assert_eq!(LclProblem::get_or_generate(6,6,2).len(), 15627);
+        assert_eq!(LclProblem::get_or_generate(2,2,3).len(), 2103);
+        assert_eq!(LclProblem::get_or_generate(3,2,3).len(), 44343);
+        //assert_eq!(LclProblem::get_or_generate(3,3,3).len(), 962871);
+    }
+
+    #[test]
+    fn test_gen_normalized() {
+        assert_eq!(LclProblem::generate_normalized(1,1,1).len(), 1);
+        assert_eq!(LclProblem::generate_normalized(1,1,2).len(), 2);
+        assert_eq!(LclProblem::generate_normalized(2,1,2).len(), 5);
+        assert_eq!(LclProblem::generate_normalized(2,2,2).len(), 18);
+        assert_eq!(LclProblem::generate_normalized(3,2,2).len(), 38);
+        assert_eq!(LclProblem::generate_normalized(4,2,2).len(), 84);
+        assert_eq!(LclProblem::generate_normalized(4,3,2).len(), 200);
+        assert_eq!(LclProblem::generate_normalized(4,4,2).len(), 446);
+        assert_eq!(LclProblem::generate_normalized(6,6,2).len(), 7926);
+        assert_eq!(LclProblem::generate_normalized(2,2,3).len(), 419);
+        assert_eq!(LclProblem::generate_normalized(3,2,3).len(), 7735);
+        //assert_eq!(LclProblem::generate_normalized(3,3,3).len(), 162299);
     }
 }
