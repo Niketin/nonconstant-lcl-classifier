@@ -12,7 +12,7 @@ pub fn build_cli() -> App<'static, 'static> {
     let subcommand_import_problems_from_lcl_classifier_db = get_subcommand_import_problems_from_lcl_classifier_db();
 
     App::new("Nonconstant LCL classifier")
-        .version("0.4.0")
+        .version("0.4.1")
         .setting(ArgRequiredElseHelp)
         .subcommands([
             subcommand_find,
