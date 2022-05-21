@@ -2,14 +2,14 @@ pub mod app;
 pub mod create_cache;
 pub mod find;
 pub mod from_lcl_classifier;
+pub mod from_stdin;
 pub mod generate;
 pub mod utils;
-pub mod from_stdin;
 
 use crate::create_cache::create_cache;
 use crate::find::find;
-use crate::generate::generate;
 use crate::from_lcl_classifier::fetch_and_print_problems;
+use crate::generate::generate;
 use std::error::Error;
 
 pub fn run_subcommand(matches: clap::ArgMatches) -> Result<(), Box<dyn Error>> {

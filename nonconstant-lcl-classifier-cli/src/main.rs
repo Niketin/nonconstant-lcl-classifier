@@ -15,8 +15,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 #[cfg(test)]
 mod cli_tests {
-    use std::error::Error;
     use nonconstant_lcl_classifier_cli::utils::*;
+    use std::error::Error;
 
     #[test]
     fn test_create_cache() -> Result<(), Box<dyn Error>> {

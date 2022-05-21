@@ -58,12 +58,12 @@ impl BiregularGraph {
         let multigraphs = Self::generate(graph_size, degree_a, degree_b);
         // Update cache
         if let Some(cache) = multigraph_cache {
-            cache.write(params, &multigraphs).unwrap_or_else(|_|
+            cache.write(params, &multigraphs).unwrap_or_else(|_| {
                 panic!(
                     "Failed writing the biregular multigraphs (n={}, deg_a={}, deg_b={}) to cache",
                     graph_size, degree_a, degree_b
                 )
-            );
+            });
 
             info!(
                 "Wrote the biregular multigraphs (n={}, deg_a={}, deg_b={}) to cache",

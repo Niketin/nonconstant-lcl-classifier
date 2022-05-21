@@ -4,15 +4,15 @@ use indicatif::{ParallelProgressIterator, ProgressFinish};
 use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
 use log::info;
+use nonconstant_lcl_classifier_lib::{
+    caches::{GraphSqliteCache, LclProblemSqliteCache},
+    save_as_svg, BiregularGraph, DotFormat, LclProblem, SatEncoder, SatResult, SatSolver,
+};
 use rayon::iter::IntoParallelRefIterator;
 use rayon::prelude::*;
 use std::fs::{create_dir_all, File};
 use std::io::{BufWriter, Write};
 use std::{path::PathBuf, str::FromStr, time::Instant};
-use nonconstant_lcl_classifier_lib::{
-    caches::{GraphSqliteCache, LclProblemSqliteCache},
-    save_as_svg, BiregularGraph, DotFormat, LclProblem, SatEncoder, SatResult, SatSolver,
-};
 
 pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     let progress = matches_find.occurrences_of("progress");
@@ -21,17 +21,17 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
 
     let sqlite_cache_path = matches_find.value_of("sqlite_cache");
 
-    let mut graph_cache = sqlite_cache_path.map(|path|
+    let mut graph_cache = sqlite_cache_path.map(|path| {
         GraphSqliteCache::new(
             PathBuf::from_str(path)
-                .expect("Database at the given path does not exist").as_path(),
-        ));
+                .expect("Database at the given path does not exist")
+                .as_path(),
+        )
+    });
 
-    let mut problem_cache = sqlite_cache_path.map(|path|
-        LclProblemSqliteCache::new(
-            PathBuf::from_str(path)
-                .expect("Invalid path").as_path(),
-        ));
+    let mut problem_cache = sqlite_cache_path.map(|path| {
+        LclProblemSqliteCache::new(PathBuf::from_str(path).expect("Invalid path").as_path())
+    });
 
     let get_progress_bar = |n: u64, progress_level| {
         if progress >= progress_level {
@@ -91,8 +91,8 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
         }
         ("from_stdin", Some(sub_m)) => {
             let no_ignore_solved = sub_m.is_present("no_ignore");
-            let problems = from_stdin(!no_ignore_solved)
-                .expect("Failed to read problems from stdin");
+            let problems =
+                from_stdin(!no_ignore_solved).expect("Failed to read problems from stdin");
             assert!(!problems.is_empty(), "No problems were given to stdin",);
             problems
         }
@@ -186,8 +186,12 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
                         let dot = graph.graph.get_dot();
                         create_dir_all(path_dir).unwrap();
                         let mut path_buf = PathBuf::from(path_dir);
-                        let file_name =
-                            format!("{}; n={}; {}.svg", problem.to_string(), graph.graph.node_count(), found - 1);
+                        let file_name = format!(
+                            "{}; n={}; {}.svg",
+                            problem.to_string(),
+                            graph.graph.node_count(),
+                            found - 1
+                        );
                         path_buf.push(file_name);
                         let path = path_buf.as_path().to_str().unwrap();
                         save_as_svg(path, &dot).expect("Failed to save graph as svg.");
@@ -210,7 +214,8 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
         })
         .collect();
 
-    let (nonproven_results, proven_results): (_, Vec<_>) = results.into_iter().partition(|(_, n)| *n == 0);
+    let (nonproven_results, proven_results): (_, Vec<_>) =
+        results.into_iter().partition(|(_, n)| *n == 0);
 
     for (problem, graph_node_count) in &proven_results {
         println!("{}: {}", graph_node_count, problem.to_string());

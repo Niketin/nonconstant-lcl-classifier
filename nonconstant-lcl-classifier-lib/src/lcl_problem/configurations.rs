@@ -40,7 +40,6 @@ impl Configurations {
         encoding: &str,
         label_map: &mut HashMap<char, u8>,
     ) -> Result<Self, Box<dyn Error>> {
-
         let configurations_vec_str = encoding.split_ascii_whitespace().collect_vec();
         let width = configurations_vec_str.first().unwrap().len();
 
@@ -64,7 +63,9 @@ impl Configurations {
             configurations.push(configuration);
         }
 
-        Ok(Configurations { data: configurations })
+        Ok(Configurations {
+            data: configurations,
+        })
     }
 
     pub fn from_configuration_data(

@@ -40,12 +40,12 @@ impl Cache<GraphCacheParams, BiregularGraph> for GraphSqliteCache {
 
 impl GraphSqliteCache {
     pub fn new(path: &Path) -> Self {
-        let connection = Self::open_connection(path).unwrap_or_else(|_|
+        let connection = Self::open_connection(path).unwrap_or_else(|_| {
             panic!(
                 "Failed to connect to SQLite database. Is there a database at path {:?} ?",
                 &path.to_str()
             )
-        );
+        });
         Self { db: connection }
     }
     fn open_connection(path: &Path) -> Result<Connection> {

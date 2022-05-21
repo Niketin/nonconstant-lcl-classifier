@@ -9,7 +9,8 @@ pub fn build_cli() -> App<'static, 'static> {
     let subcommand_find = get_subcommand_find();
     let subcommand_generate = get_subcommand_generate();
     let subcommand_create_cache = get_subcommand_create_sql_cache();
-    let subcommand_import_problems_from_lcl_classifier_db = get_subcommand_import_problems_from_lcl_classifier_db();
+    let subcommand_import_problems_from_lcl_classifier_db =
+        get_subcommand_import_problems_from_lcl_classifier_db();
 
     App::new("Nonconstant LCL classifier")
         .version("0.4.1")

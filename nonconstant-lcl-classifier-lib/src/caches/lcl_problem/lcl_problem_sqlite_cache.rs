@@ -10,12 +10,12 @@ pub struct LclProblemSqliteCache {
 
 impl LclProblemSqliteCache {
     pub fn new(path: &Path) -> Self {
-        let connection = Self::open_connection(path).unwrap_or_else(|_|
+        let connection = Self::open_connection(path).unwrap_or_else(|_| {
             panic!(
                 "Failed to connect to SQLite database. Is there a database at path {:?} ?",
                 &path
             )
-        );
+        });
         Self { db: connection }
     }
     fn open_connection(path: &Path) -> Result<Connection> {

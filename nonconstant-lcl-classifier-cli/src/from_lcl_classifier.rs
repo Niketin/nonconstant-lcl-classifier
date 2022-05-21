@@ -1,10 +1,10 @@
 use clap::{value_t_or_exit, values_t, ArgMatches};
 use itertools::Itertools;
-use postgres_types::{FromSql, ToSql};
 use nonconstant_lcl_classifier_lib::{
     lcl_problem::{Normalizable, Purgeable},
     LclProblem,
 };
+use postgres_types::{FromSql, ToSql};
 
 #[derive(Debug, ToSql, FromSql)]
 #[postgres(name = "complexity")]
@@ -33,12 +33,12 @@ pub fn fetch_and_print_problems(sub_m: &ArgMatches) -> Result<(), Box<dyn std::e
     let modulo = modulo.map(|v| (v[0], v[1]));
 
     let mut problems = fetch_problems(db_path, active_degree, passive_degree, label_count, modulo)
-        .unwrap_or_else(|_|
+        .unwrap_or_else(|_| {
             panic!(
                 "Failed to fetch problems from lcl classifier database at {}",
                 db_path
             )
-        );
+        });
 
     if sub_m.is_present("purge") {
         let old_count = problems.len();
