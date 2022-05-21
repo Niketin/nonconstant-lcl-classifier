@@ -86,6 +86,7 @@ fn get_partitions(
     (node_indices_a, node_indices_p)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn generate_bipartite_multigraphs(
     n1: usize,
     n2: usize,
@@ -169,7 +170,7 @@ fn multigraph_string_to_petgraph(
     Ok(graphs)
 }
 
-fn partition_is_regular(graph: &UndirectedGraph, partition: &Vec<NodeIndex>) -> bool {
+fn partition_is_regular(graph: &UndirectedGraph, partition: &[NodeIndex]) -> bool {
     let degrees = partition
         .iter()
         .map(|node| graph.neighbors(*node).count())

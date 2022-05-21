@@ -36,13 +36,13 @@ pub fn from_stdin(ignore_solved: bool) -> Result<Vec<LclProblem>, Box<dyn std::e
             }
 
             let (active, passive) = problem_str
-                .split(";")
+                .split(';')
                 .map(|x| x.trim())
                 .collect_tuple()
                 .expect("Problem was not in correct format");
             let problem =
                 LclProblem::new(active, passive).expect("Could not parse the LCL problem");
-            return Some(problem);
+            Some(problem)
         })
         .collect_vec())
 }

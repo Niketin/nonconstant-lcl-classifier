@@ -194,10 +194,10 @@ impl SatEncoder {
 
         let _passive_nodes_size = self.graph.partition_b.len();
 
-        return (active_nodes_size * active_permutations_size
+        (active_nodes_size * active_permutations_size
             + passive_index * passive_permutations_size
             + permutation_index
-            + 1) as i32;
+            + 1) as i32
     }
 
     /// Returns a variable representing an assigned label of an edge.
@@ -244,7 +244,8 @@ impl SatEncoder {
         // are reserved for labels over edge from active node to passive node.
         let active_passive_label_variables_size =
             (self.graph.graph.edge_count() * labels_count) as i32;
-        return base + active_passive_label_variables_size + (v as i32);
+
+        base + active_passive_label_variables_size + (v as i32)
     }
 
     fn clause_to_string(&self, clause: &Clause) -> String {
@@ -337,12 +338,12 @@ impl SatEncoder {
     pub fn print_clauses(&self, clauses: &Clauses) {
         clauses
             .iter()
-            .for_each(|ref clause| println!("{} &&", self.clause_to_string(clause)));
+            .for_each(|clause| println!("{} &&", self.clause_to_string(clause)));
     }
 }
 
 fn at_least_one(variables: &[i32]) -> Clauses {
-    vec![variables.into_iter().copied().collect_vec()]
+    vec![variables.iter().copied().collect_vec()]
 }
 
 fn at_most_one(variables: &[i32]) -> Clauses {

@@ -2,25 +2,24 @@ use super::LclProblemCacheParams;
 use crate::caches::Cache;
 use crate::LclProblem;
 use rusqlite::{params, Connection, Result};
-use std::path::PathBuf;
+use std::path::Path;
 
 pub struct LclProblemSqliteCache {
     db: Connection,
 }
 
 impl LclProblemSqliteCache {
-    pub fn new(path: PathBuf) -> Self {
-        let connection = Self::open_connection(&path).expect(
-            format!(
+    pub fn new(path: &Path) -> Self {
+        let connection = Self::open_connection(path).unwrap_or_else(|_|
+            panic!(
                 "Failed to connect to SQLite database. Is there a database at path {:?} ?",
-                &path.as_path().to_str()
+                &path
             )
-            .as_str(),
         );
-        return Self { db: connection };
+        Self { db: connection }
     }
-    fn open_connection(path: &PathBuf) -> Result<Connection> {
-        Connection::open(path.as_path())
+    fn open_connection(path: &Path) -> Result<Connection> {
+        Connection::open(path)
     }
 }
 
@@ -43,7 +42,7 @@ impl Cache<LclProblemCacheParams, LclProblem> for LclProblemSqliteCache {
     fn write(
         &mut self,
         params: LclProblemCacheParams,
-        problems: &Vec<LclProblem>,
+        problems: &[LclProblem],
     ) -> Result<(), Box<dyn std::error::Error>> {
         let data = bincode::serialize(problems)?;
         self.db.execute(

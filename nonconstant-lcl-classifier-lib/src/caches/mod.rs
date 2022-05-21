@@ -9,7 +9,7 @@ use rusqlite::DatabaseName::Main;
 
 pub trait Cache<P, T> {
     fn read(&self, params: P) -> Result<Vec<T>, Box<dyn std::error::Error>>;
-    fn write(&mut self, params: P, data: &Vec<T>) -> Result<(), Box<dyn std::error::Error>>;
+    fn write(&mut self, params: P, data: &[T]) -> Result<(), Box<dyn std::error::Error>>;
 }
 
 pub fn create_sqlite_cache(path: &str) -> Result<(), Box<dyn std::error::Error>> {

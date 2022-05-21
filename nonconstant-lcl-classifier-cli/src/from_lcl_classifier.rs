@@ -33,12 +33,11 @@ pub fn fetch_and_print_problems(sub_m: &ArgMatches) -> Result<(), Box<dyn std::e
     let modulo = modulo.map(|v| (v[0], v[1]));
 
     let mut problems = fetch_problems(db_path, active_degree, passive_degree, label_count, modulo)
-        .expect(
-            format!(
+        .unwrap_or_else(|_|
+            panic!(
                 "Failed to fetch problems from lcl classifier database at {}",
                 db_path
             )
-            .as_str(),
         );
 
     if sub_m.is_present("purge") {
@@ -92,8 +91,7 @@ pub fn fetch_problems(
 
     //TODO Make degree and label_count filters optional.
 
-    let query_str = format!(
-        "
+    let query_str = "
     SELECT id, active_degree, passive_degree, label_count, active_constraints, passive_constraints
     FROM problems
     WHERE
@@ -104,10 +102,9 @@ pub fn fetch_problems(
         passive_degree = $3 AND
         label_count = $4 AND
         id % $5 = $6
-    ORDER BY id"
-    );
+    ORDER BY id";
     let query = client.query(
-        query_str.as_str(),
+        query_str,
         &[
             &Complexity::Constant,
             &active_degree,
@@ -142,7 +139,7 @@ pub fn fetch_problems(
     Ok(problems)
 }
 
-fn _configuration_string_from_lcl_classifier_format(encoding: &Vec<String>) -> String {
+fn _configuration_string_from_lcl_classifier_format(encoding: &[String]) -> String {
     encoding.iter().map(|x| x.chars().join(" ")).join("\n")
 }
 

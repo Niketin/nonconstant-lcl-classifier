@@ -134,7 +134,7 @@ impl LclProblem {
                 .iter(),
         );
 
-        let purged = cartesian_product
+        cartesian_product
             .filter_map(|(active, passive)| {
                 let mut problem = LclProblem::from_configurations(active.clone(), passive.clone());
                 problem.purge();
@@ -144,9 +144,7 @@ impl LclProblem {
                 None
             })
             .unique()
-            .collect_vec();
-
-        purged
+            .collect_vec()
     }
 
     /// Generates all unique normalized problems of a class.
@@ -162,7 +160,7 @@ impl LclProblem {
     ) -> Vec<Self> {
         let mut problems = Self::get_or_generate(active_degree, passive_degree, label_count);
         problems.iter_mut().for_each(|p| p.normalize());
-        return problems.into_iter().unique().collect_vec();
+        problems.into_iter().unique().collect_vec()
     }
 
     fn get_all_permutations(&self) -> Vec<(Configurations, Configurations)> {
@@ -181,10 +179,10 @@ impl LclProblem {
             assert!(!perm.is_empty());
             let active = self.active.map_labels(&perm);
             let passive = self.passive.map_labels(&perm);
-            return (active, passive);
+            (active, passive)
         });
 
-        return a.collect_vec();
+        a.collect_vec()
     }
 
     /// Generate all unique normalized problems of a class (cached).
@@ -217,9 +215,9 @@ impl LclProblem {
             cache
                 .write(params,
                     &problems,
-                )
-                .expect(format!("Failed writing the problems (deg_active={}, deg_passive={}, labels={}) to cache",
-                active_degree, passive_degree, alphabet_length).as_str());
+                ).unwrap_or_else(|_|
+                panic!("Failed writing the problems (deg_active={}, deg_passive={}, labels={}) to cache",
+                active_degree, passive_degree, alphabet_length));
             info!(
                 "wrote the problems (deg_active={}, deg_passive={}, labels={}) to cache",
                 active_degree, passive_degree, alphabet_length
@@ -236,13 +234,13 @@ impl LclProblem {
     /// and are separeted with newline.
     pub fn write_to_file(
         path: PathBuf,
-        problems: &Vec<LclProblem>,
+        problems: &[LclProblem],
     ) -> Result<(), Box<dyn std::error::Error>> {
         let mut file = File::create(path)?;
 
-        problems.iter().for_each(|ref problem| {
+        problems.iter().for_each(|problem| {
             let problem_string = problem.to_string();
-            file.write(format!("{}\n", problem_string).as_bytes())
+            file.write_all(format!("{}\n", problem_string).as_bytes())
                 .unwrap();
         });
 
@@ -267,18 +265,17 @@ impl ToString for LclProblem {
             .map(|problem_set| {
                 let mut conf = problem_set
                     .get_configurations()
-                    .into_iter()
+                    .iter()
                     .map(|configuration| {
-                        let c = configuration
+                        configuration
                             .iter()
                             .map(|&l| labels.chars().nth(l as usize).unwrap())
-                            .join("");
-                        format!("{}", c)
+                            .join("")
                     });
-                format!("{}", conf.join(" "))
+                conf.join(" ")
             })
             .collect_vec();
-        format!("{}", configurations_string.join("; "))
+        configurations_string.join("; ")
     }
 }
 

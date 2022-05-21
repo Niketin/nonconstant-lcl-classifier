@@ -21,23 +21,17 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
 
     let sqlite_cache_path = matches_find.value_of("sqlite_cache");
 
-    let mut graph_cache = if sqlite_cache_path.is_some() {
-        Some(GraphSqliteCache::new(
-            PathBuf::from_str(sqlite_cache_path.unwrap())
-                .expect("Database at the given path does not exist"),
-        ))
-    } else {
-        None
-    };
+    let mut graph_cache = sqlite_cache_path.map(|path|
+        GraphSqliteCache::new(
+            PathBuf::from_str(path)
+                .expect("Database at the given path does not exist").as_path(),
+        ));
 
-    let mut problem_cache = if sqlite_cache_path.is_some() {
-        Some(LclProblemSqliteCache::new(
-            PathBuf::from_str(sqlite_cache_path.unwrap())
-                .expect("Database at the given path does not exist"),
-        ))
-    } else {
-        None
-    };
+    let mut problem_cache = sqlite_cache_path.map(|path|
+        LclProblemSqliteCache::new(
+            PathBuf::from_str(path)
+                .expect("Invalid path").as_path(),
+        ));
 
     let get_progress_bar = |n: u64, progress_level| {
         if progress >= progress_level {
@@ -98,8 +92,8 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
         ("from_stdin", Some(sub_m)) => {
             let no_ignore_solved = sub_m.is_present("no_ignore");
             let problems = from_stdin(!no_ignore_solved)
-                .expect(format!("Failed to read problems from stdin",).as_str());
-            assert!(problems.len() > 0, "No problems were given to stdin",);
+                .expect("Failed to read problems from stdin");
+            assert!(!problems.is_empty(), "No problems were given to stdin",);
             problems
         }
         (_, _) => unreachable!(),
@@ -169,8 +163,8 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
             'graph_size_loop: for graphs_n in &graphs {
                 // Create SAT encoder iterator.
                 let encoders = graphs_n
-                    .into_iter()
-                    .map(|graph| SatEncoder::new(&problem, graph.clone())); // TODO use immutable reference instead of cloning.
+                    .iter()
+                    .map(|graph| SatEncoder::new(problem, graph.clone())); // TODO use immutable reference instead of cloning.
 
                 let mut found = 0;
 

@@ -19,13 +19,11 @@ impl SatSolver {
     ///
     /// Returns enumerator [`SatResult`] stating the solver's result.
     pub fn solve(clauses: Clauses) -> SatResult {
-
         let unsat_result = kissat_rs::Solver::decide_formula(clauses).unwrap();
-
-        return match unsat_result {
+        match unsat_result {
             true => SatResult::Satisfiable,
             false => SatResult::Unsatisfiable,
-        };
+        }
     }
 }
 

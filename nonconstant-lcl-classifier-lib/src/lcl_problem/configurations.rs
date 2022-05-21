@@ -1,7 +1,6 @@
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{
-    cmp::Ordering,
     collections::{HashMap, HashSet},
     error::Error,
     iter::FromIterator,
@@ -14,7 +13,7 @@ use std::{
 ///
 /// Contained configurations can be accessed with different methods.
 /// It is also possible to access all unique permutations of each configuration with [`Configurations::get_permutations`].
-#[derive(Debug, Clone, Eq, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Configurations {
     data: Vec<Vec<u8>>,
 }
@@ -45,7 +44,7 @@ impl Configurations {
         let configurations_vec_str = encoding.split_ascii_whitespace().collect_vec();
         let width = configurations_vec_str.first().unwrap().len();
 
-        let all_same_length = configurations_vec_str.iter().all(|ref l| l.len() == width);
+        let all_same_length = configurations_vec_str.iter().all(|l| l.len() == width);
         assert!(all_same_length);
 
         let mut configurations = vec![];
@@ -54,7 +53,7 @@ impl Configurations {
             for label in configuration_str.chars() {
                 //TODO add support for compact notation from the Round eliminator
                 let value = if label_map.contains_key(&label) {
-                    label_map.get(&label).unwrap().clone()
+                    *label_map.get(&label).unwrap()
                 } else {
                     let new_value = label_map.len() as u8;
                     label_map.insert(label, new_value);
@@ -150,11 +149,10 @@ impl Configurations {
     pub fn get_permutations(&self) -> Vec<Vec<u8>> {
         self.data
             .iter()
-            .map(|x| {
+            .flat_map(|x| {
                 let k = x.len();
-                x.iter().map(|x| *x).permutations(k).unique().collect_vec()
+                x.iter().copied().permutations(k).unique().collect_vec()
             })
-            .flatten()
             .collect_vec()
     }
 
@@ -170,7 +168,7 @@ impl Configurations {
                     .collect_vec()
             })
             .collect_vec();
-        Configurations { data, ..*self }
+        Configurations { data }
     }
 
     pub fn sort(&mut self) {
@@ -183,7 +181,7 @@ impl Configurations {
     }
 
     fn sort_labels_inside_configuration(&mut self) {
-        self.data.iter_mut().for_each(|c| c.sort());
+        self.data.iter_mut().for_each(|c| c.sort_unstable());
     }
 
     pub fn get_labels(&self) -> Vec<u8> {
@@ -210,7 +208,7 @@ impl Configurations {
         let alphabet = (0..alphabet_length).collect_vec();
         let powerset_of_labels = Self::generate_with_all_combinations(degree, &alphabet);
 
-        let powerset_of_configurations = (1..=powerset_of_labels.get_configuration_count())
+        (1..=powerset_of_labels.get_configuration_count())
             .flat_map(|max_configurations| {
                 powerset_of_labels
                     .get_configurations()
@@ -219,12 +217,11 @@ impl Configurations {
                     .combinations(max_configurations)
             })
             .map(|data| Configurations::from_configuration_data(data).unwrap())
-            .collect_vec();
-        return powerset_of_configurations;
+            .collect_vec()
     }
 
     /// Generates `Configurations` that contains all combinations of the labels in `alphabet`.
-    fn generate_with_all_combinations(degree: usize, alphabet: &Vec<u8>) -> Configurations {
+    fn generate_with_all_combinations(degree: usize, alphabet: &[u8]) -> Configurations {
         let data = alphabet
             .iter()
             .cloned()
@@ -234,18 +231,24 @@ impl Configurations {
     }
 }
 
-impl PartialEq for Configurations {
-    fn eq(&self, other: &Self) -> bool {
-        self.data == other.data
-    }
-}
-
-impl PartialOrd for Configurations {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.data.partial_cmp(&other.data)
-    }
-}
-
+//impl PartialEq for Configurations {
+//   fn eq(&self, other: &Self) -> bool {
+//       self.data == other.data
+//   }
+//}
+//
+//impl PartialOrd for Configurations {
+//   fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+//       self.data.partial_cmp(&other.data)
+//   }
+//}
+//
+//impl Ord for Configurations {
+//   fn cmp(&self, other: &Self) -> Ordering {
+//       self.data.cmp(&other.data)
+//   }
+//}
+//
 #[cfg(test)]
 mod tests {
     use super::*;

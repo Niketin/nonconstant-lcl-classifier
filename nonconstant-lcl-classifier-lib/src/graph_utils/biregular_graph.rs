@@ -58,12 +58,11 @@ impl BiregularGraph {
         let multigraphs = Self::generate(graph_size, degree_a, degree_b);
         // Update cache
         if let Some(cache) = multigraph_cache {
-            cache.write(params, &multigraphs).expect(
-                format!(
+            cache.write(params, &multigraphs).unwrap_or_else(|_|
+                panic!(
                     "Failed writing the biregular multigraphs (n={}, deg_a={}, deg_b={}) to cache",
                     graph_size, degree_a, degree_b
                 )
-                .as_str(),
             );
 
             info!(
@@ -85,7 +84,7 @@ impl BiregularGraph {
         let max_edge_multiplicity = max_degree;
         let parts = num_cpus::get();
 
-        let multigraphs = (0usize..parts)
+        (0usize..parts)
             .into_par_iter()
             .map(|i| {
                 let mut multigraphs: Vec<((usize, usize), String)> = Vec::new();
@@ -119,9 +118,9 @@ impl BiregularGraph {
                     })
                     .collect_vec();
 
-                let multigraphs_biregulargraph = multigraphs_petgraph
+                multigraphs_petgraph
                     .into_iter()
-                    .map(|((n1, n2), graphs)| {
+                    .flat_map(|((n1, n2), graphs)| {
                         graphs
                             .into_iter()
                             .map(|graph| {
@@ -130,9 +129,8 @@ impl BiregularGraph {
                             })
                             .collect_vec()
                     })
-                    .flatten()
                     .filter(|(g, (p1, p2))| {
-                        partition_is_regular(&g, &p1) && partition_is_regular(&g, &p2)
+                        partition_is_regular(g, p1) && partition_is_regular(g, p2)
                     })
                     .map(|(graph, (partition_a, partition_b))| Self {
                         degree_a,
@@ -141,14 +139,10 @@ impl BiregularGraph {
                         partition_a,
                         partition_b,
                     })
-                    .collect_vec();
-
-                multigraphs_biregulargraph
+                    .collect_vec()
             })
             .flatten()
-            .collect();
-
-        multigraphs
+            .collect()
     }
 }
 

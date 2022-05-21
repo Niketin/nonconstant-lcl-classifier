@@ -2,7 +2,7 @@ use super::GraphCacheParams;
 use crate::caches::Cache;
 use crate::BiregularGraph;
 use rusqlite::{params, Connection, Result};
-use std::path::PathBuf;
+use std::path::Path;
 
 pub struct GraphSqliteCache {
     db: Connection,
@@ -27,7 +27,7 @@ impl Cache<GraphCacheParams, BiregularGraph> for GraphSqliteCache {
     fn write(
         &mut self,
         params: GraphCacheParams,
-        graphs: &Vec<BiregularGraph>,
+        graphs: &[BiregularGraph],
     ) -> Result<(), Box<dyn std::error::Error>> {
         let data = bincode::serialize(graphs)?;
         self.db.execute(
@@ -39,17 +39,16 @@ impl Cache<GraphCacheParams, BiregularGraph> for GraphSqliteCache {
 }
 
 impl GraphSqliteCache {
-    pub fn new(path: PathBuf) -> Self {
-        let connection = Self::open_connection(&path).expect(
-            format!(
+    pub fn new(path: &Path) -> Self {
+        let connection = Self::open_connection(path).unwrap_or_else(|_|
+            panic!(
                 "Failed to connect to SQLite database. Is there a database at path {:?} ?",
-                &path.as_path().to_str()
+                &path.to_str()
             )
-            .as_str(),
         );
-        return Self { db: connection };
+        Self { db: connection }
     }
-    fn open_connection(path: &PathBuf) -> Result<Connection> {
-        Connection::open(path.as_path())
+    fn open_connection(path: &Path) -> Result<Connection> {
+        Connection::open(path)
     }
 }
