@@ -62,15 +62,16 @@ pub fn fetch_and_print_problems(sub_m: &ArgMatches) -> Result<(), Box<dyn std::e
     Ok(())
 }
 
-/// Fetches all problems with constant determinate lower bound
+/// Fetches all problems with constant lower bound and non-constant upper-bound
 ///
+/// The bounds are deterministic.
 /// The problems are fetched from the given LCL-classifier's database.
 ///
 /// `database_path` should be of form
-/// ```"postgresql://<user>:<password>@<host>:<port>"```
+/// ```"postgresql://<user>:<password>@<host>:<port>/<database>"```
 ///
 /// For example
-/// ```"postgresql://postgres:pass@localhost/db"```
+/// ```"postgresql://postgres:pass@localhost:5432/db"```
 pub fn fetch_problems(
     database_path: &str,
     active_degree: i16,
@@ -98,14 +99,16 @@ pub fn fetch_problems(
         is_tree = TRUE AND
         is_directed_or_rooted = FALSE AND
         det_lower_bound = $1 AND
-        active_degree = $2 AND
-        passive_degree = $3 AND
-        label_count = $4 AND
-        id % $5 = $6
+        det_upper_bound != $2 AND
+        active_degree = $3 AND
+        passive_degree = $4 AND
+        label_count = $5 AND
+        id % $6 = $7
     ORDER BY id";
     let query = client.query(
         query_str,
         &[
+            &Complexity::Constant,
             &Complexity::Constant,
             &active_degree,
             &passive_degree,
