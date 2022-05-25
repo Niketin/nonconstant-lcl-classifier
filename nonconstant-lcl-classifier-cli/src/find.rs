@@ -63,6 +63,7 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
     pb_gen_problems.enable_steady_tick(100);
     pb_gen_problems.set_message("Defining problem(s)");
 
+    let now = Instant::now();
     // Read a problem or generate class of problems.
     let problems = match matches_find.subcommand() {
         ("single", Some(sub_m)) => {
@@ -98,6 +99,7 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
         }
         (_, _) => unreachable!(),
     };
+    let time_problems = now.elapsed().as_secs_f32();
     pb_gen_problems.set_length(problems.len() as u64);
     pb_gen_problems.set_style(get_progress_style_no_speed());
     pb_gen_problems.finish_with_message("Defining problem(s) done!");
@@ -126,18 +128,13 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
     ));
     pb_graphs.enable_steady_tick(100);
 
+    let now = Instant::now();
     for n in n_lower..=n_upper {
         // Get biregular graphs from cache or generate them.
-        let now = Instant::now();
         let graphs_n = BiregularGraph::get_or_generate(n, deg_a, deg_p, graph_cache.as_mut());
-        info!(
-            "Generated {} nonisomorphic biregular graphs in {} s",
-            graphs_n.len(),
-            now.elapsed().as_secs_f32()
-        );
-
         graphs.push(graphs_n);
     }
+    let time_graphs = now.elapsed().as_secs_f32();
     let graph_count: usize = graphs.iter().map(|x| x.len()).sum();
     pb_graphs.set_length(graph_count as u64);
     pb_graphs.finish_with_message(format!(
@@ -153,7 +150,7 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
     if progress == 1 {
         pb_problems.enable_steady_tick(100);
     }
-
+    let now = Instant::now();
     let results: Vec<(LclProblem, usize)> = problems
         .par_iter()
         .progress_with(pb_problems)
@@ -164,12 +161,13 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
                 // Create SAT encoder iterator.
                 let encoders = graphs_n
                     .iter()
-                    .map(|graph| SatEncoder::new(problem, graph.clone())); // TODO use immutable reference instead of cloning.
+                    .enumerate()
+                    .map(|(graph_index, graph)| (graph_index, SatEncoder::new(problem, graph.clone()))); // TODO use immutable reference instead of cloning.
 
                 let mut found = 0;
 
                 // Solve SAT problems.
-                'encoder_loop: for encoder in encoders {
+                'encoder_loop: for (graph_index, encoder) in encoders {
                     let result = SatSolver::solve(encoder.encode());
                     if result == SatResult::Satisfiable {
                         continue;
@@ -187,10 +185,10 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
                         create_dir_all(path_dir).unwrap();
                         let mut path_buf = PathBuf::from(path_dir);
                         let file_name = format!(
-                            "{}; n={}; {}.svg",
+                            "{}; n={}; G={}.svg",
                             problem.to_string(),
                             graph.graph.node_count(),
-                            found - 1
+                            graph_index
                         );
                         path_buf.push(file_name);
                         let path = path_buf.as_path().to_str().unwrap();
@@ -213,12 +211,22 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
             results
         })
         .collect();
+    let time_sat = now.elapsed().as_secs_f32();
 
     let (nonproven_results, proven_results): (_, Vec<_>) =
         results.into_iter().partition(|(_, n)| *n == 0);
 
     for (problem, graph_node_count) in &proven_results {
         println!("{}: {}", graph_node_count, problem.to_string());
+    }
+
+    if let Some(path) = matches_find.value_of("write_nonproven_result") {
+        let f = File::create(path).expect("Unable to create file");
+        let mut f = BufWriter::new(f);
+        for (p, n) in &nonproven_results {
+            f.write_all(format!("{}: {}\n", n, p.to_string()).as_bytes())
+                .expect("Unable to write data");
+        }
     }
 
     if matches_find.is_present("print_stats") {
@@ -228,6 +236,23 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
         } else {
             proven_results.len()
         };
+        eprintln!(
+            "Problems were generated/fetched in {} s",
+            time_problems,
+        );
+        eprintln!(
+            "Multigraphs were generated/fetched in {} s",
+            time_graphs,
+        );
+        eprintln!(
+            "SAT instances were solved in {} s",
+            time_sat,
+        );
+        eprintln!(
+            "Total time {} s",
+            time_problems + time_graphs + time_sat,
+        );
+
         eprintln!(
             "Found new lower bounds for {}/{} problems",
             new_uniques_len,
@@ -244,15 +269,6 @@ pub fn find(matches_find: &ArgMatches) -> Result<(), Box<dyn std::error::Error>>
         for n in sizes {
             let count = proven_results.iter().filter(|(_, size)| n == *size).count();
             eprintln!("n = {:2}; count = {:5}", n, count);
-        }
-    }
-
-    if let Some(path) = matches_find.value_of("write_nonproven_result") {
-        let f = File::create(path).expect("Unable to create file");
-        let mut f = BufWriter::new(f);
-        for (p, n) in &nonproven_results {
-            f.write_all(format!("{}: {}\n", n, p.to_string()).as_bytes())
-                .expect("Unable to write data");
         }
     }
 
