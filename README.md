@@ -1,6 +1,6 @@
 # Nonconstant LCL classifier
 
-This tool can be used to find nonconstant lower bounds for LCL-problems in the LOCAL model.
+This tool can be used to find nonconstant lower bounds for LCL problems in the LOCAL model.
 
 It tries to find a counterexample multigraph, in which the problem is unsolvable in the PN model.
 This implies that the problem is not solvable in constant time in the LOCAL model.
